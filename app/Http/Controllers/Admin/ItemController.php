@@ -1,0 +1,131 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Item;
+use App\Models\Category;
+use App\Models\Inventory;
+use App\Models\Warehouse;
+use App\Http\Requests\ItemRequest;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class ItemController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = Item::with(['category', 'inventories']);
+
+        // Search Filter (Search by Name or Barcode)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('barcode', 'like', "%{$search}%");
+            });
+        }
+
+        // Category Filter
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        $items = $query->latest()->paginate(15)->withQueryString();
+        $categories = Category::orderBy('name', 'asc')->get();
+
+        return view('admin.items.index', compact('items', 'categories'));
+    }
+
+    public function create()
+    {
+        $categories = Category::orderBy('name')->get();
+
+        return view('admin.items.create', compact('categories'));
+    }
+
+    public function store(ItemRequest $request)
+    {
+        DB::transaction(function () use ($request) {
+            // ၁။ Item Record သစ် ဆောက်ပါမည်
+            $item = Item::create($request->validated());
+
+            // ၂။ Default Warehouse တစ်ခုရှိပါက Inventory Initial Batch Record ပါ တပါတည်း ထည့်ပေးမည်
+            $defaultWarehouse = Warehouse::first();
+
+            if ($defaultWarehouse) {
+                Inventory::create([
+                    'warehouse_id' => $defaultWarehouse->id,
+                    'item_id'      => $item->id,
+                    'quantity'     => $request->input('quantity', 0),
+                    'expiry_date'  => $request->input('expiry_date'),
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('backend.items.index')
+            ->with('success', 'Item and initial inventory batch created successfully.');
+    }
+
+    public function show(string $id)
+    {
+        $item = Item::with(['category', 'inventories.warehouse'])->findOrFail($id);
+
+        return view('admin.items.show', compact('item'));
+    }
+
+    public function edit(string $id)
+    {
+        $item = Item::with('inventories')->findOrFail($id);
+        $categories = Category::orderBy('name')->get();
+
+        return view('admin.items.edit', compact('item', 'categories'));
+    }
+
+    public function update(ItemRequest $request, string $id)
+    {
+        DB::transaction(function () use ($request, $id) {
+            $item = Item::findOrFail($id);
+            $item->update($request->validated());
+
+            // Expiry Date ပြင်ဆင်ပါက အဆိုပါ Item ၏ လက်ရှိ Inventory Record ပါ တပါတည်း Update လုပ်ပေးပါမည်
+            if ($request->has('expiry_date')) {
+                Inventory::where('item_id', $item->id)->update([
+                    'expiry_date' => $request->input('expiry_date'),
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('backend.items.index')
+            ->with('success', 'Item updated successfully.');
+    }
+
+    public function destroy(string $id)
+    {
+        $item = Item::findOrFail($id);
+        $item->delete();
+
+        return redirect()
+            ->route('backend.items.index')
+            ->with('success', 'Item deleted successfully.');
+    }
+
+    public function getByBarcode(string $barcode)
+    {
+        $item = Item::where('barcode', $barcode)->first();
+
+        if ($item) {
+            return response()->json([
+                'success' => true,
+                'data'    => $item
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Item not found'
+        ], 404);
+    }
+}
