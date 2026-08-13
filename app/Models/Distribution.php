@@ -24,9 +24,9 @@ class Distribution extends Model
     ];
 
     /**
-     * Distribution belongs to a relief request.
+     * Distribution belongs to a Relief Request.
      */
-    public function request()
+    public function reliefRequest()
     {
         return $this->belongsTo(
             ReliefRequest::class,
@@ -35,17 +35,18 @@ class Distribution extends Model
     }
 
     /**
-     * Distribution belongs to a warehouse.
+     * Distribution belongs to a Warehouse.
      */
     public function warehouse()
     {
         return $this->belongsTo(
-            Warehouse::class
+            Warehouse::class,
+            'warehouse_id'
         );
     }
 
     /**
-     * Distribution is handled by a user.
+     * Distribution is handled by a User.
      */
     public function handledBy()
     {
@@ -55,11 +56,14 @@ class Distribution extends Model
         );
     }
 
+    /**
+     * Distribution has many Distribution Items.
+     */
     public function distributionItems()
-{
-    return $this->hasMany(
-        DistributionItem::class,
-        'distribution_id'
-    );
-}
+    {
+        return $this->hasMany(
+            DistributionItem::class,
+            'distribution_id'
+        );
+    }
 }

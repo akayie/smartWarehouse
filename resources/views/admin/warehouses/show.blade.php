@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('title')
-    Warehouse Details
+    ကုန်လှောင်ရုံ အသေးစိတ်
 @endsection
 
 
@@ -9,7 +9,7 @@
 
     <a href="{{ route('backend.warehouses.index') }}"
        class="btn btn-sm btn-outline">
-        ← Back
+        ← နောက်သို့
     </a>
 
 @endsection
@@ -36,7 +36,7 @@
             <h3 style="
                 margin:0 0 5px;
             ">
-                Warehouse Details
+                ကုန်လှောင်ရုံ အသေးစိတ်
             </h3>
 
             <p style="
@@ -44,7 +44,7 @@
                 color:#6b7280;
                 font-size:14px;
             ">
-                View complete warehouse information.
+                ကုန်လှောင်ရုံ၏ အသေးစိတ် အချက်အလက်များကို ကြည့်ရှုပါ။
             </p>
 
         </div>
@@ -82,7 +82,7 @@
                 ) }}"
                 class="edit-btn">
 
-                Edit Warehouse
+                ကုန်လှောင်ရုံ ပြင်ဆင်ရန်
 
             </a>
 
@@ -113,7 +113,7 @@
                 color:#6b7280;
                 margin-bottom:8px;
             ">
-                Warehouse
+                ကုန်လှောင်ရုံ
             </div>
 
             <strong style="
@@ -138,13 +138,13 @@
                 color:#6b7280;
                 margin-bottom:8px;
             ">
-                Manager
+                မန်နေဂျာ / တာဝန်ခံ
             </div>
 
             <strong style="
                 font-size:18px;
             ">
-                {{ $warehouse->manager->name ?? 'No Manager' }}
+                {{ $warehouse->manager->name ?? 'မန်နေဂျာ တာဝန်ပေးထားခြင်း မရှိပါ' }}
             </strong>
 
         </div>
@@ -163,20 +163,20 @@
                 color:#6b7280;
                 margin-bottom:8px;
             ">
-                Status
+                အခြေအနေ
             </div>
 
 
             @if($warehouse->status === 'Active')
 
                 <span class="badge badge-success">
-                    Active
+                    အသုံးပြုနေဆဲ
                 </span>
 
             @else
 
                 <span class="badge badge-danger">
-                    Inactive
+                    ပိတ်ထားသည်
                 </span>
 
             @endif
@@ -195,7 +195,7 @@
             margin:0 0 15px;
             font-size:18px;
         ">
-            Warehouse Information
+            ကုန်လှောင်ရုံ အချက်အလက်များ
         </h3>
 
 
@@ -213,7 +213,7 @@
                         <th style="
                             width:220px;
                         ">
-                            Warehouse ID
+                            ကုန်လှောင်ရုံ ID
                         </th>
 
                         <td>
@@ -227,7 +227,7 @@
                     <tr>
 
                         <th>
-                            Warehouse Code
+                            ကုန်လှောင်ရုံ ကုတ်နံပါတ်
                         </th>
 
                         <td>
@@ -250,7 +250,7 @@
                     <tr>
 
                         <th>
-                            Warehouse Name
+                            ကုန်လှောင်ရုံ အမည်
                         </th>
 
                         <td>
@@ -268,11 +268,11 @@
                     <tr>
 
                         <th>
-                            Location
+                            တည်နေရာ
                         </th>
 
                         <td>
-                            {{ $warehouse->location ?: 'N/A' }}
+                            {{ $warehouse->location ?: 'မရှိပါ' }}
                         </td>
 
                     </tr>
@@ -282,11 +282,11 @@
                     <tr>
 
                         <th>
-                            Contact Phone
+                            ဆက်သွယ်ရန် ဖုန်းနံပါတ်
                         </th>
 
                         <td>
-                            {{ $warehouse->phone ?: 'N/A' }}
+                            {{ $warehouse->phone ?: 'မရှိပါ' }}
                         </td>
 
                     </tr>
@@ -296,7 +296,7 @@
                     <tr>
 
                         <th>
-                            Warehouse Manager
+                            ကုန်လှောင်ရုံ မန်နေဂျာ
                         </th>
 
                         <td>
@@ -310,7 +310,7 @@
                                 <span style="
                                     color:#6b7280;
                                 ">
-                                    No Manager Assigned
+                                    မန်နေဂျာ တာဝန်ပေးထားခြင်း မရှိပါ
                                 </span>
 
                             @endif
@@ -324,7 +324,7 @@
                     <tr>
 
                         <th>
-                            Manager Email
+                            မန်နေဂျာ အီးမေးလ်
                         </th>
 
                         <td>
@@ -348,7 +348,7 @@
                     <tr>
 
                         <th>
-                            Status
+                            အခြေအနေ
                         </th>
 
                         <td>
@@ -356,13 +356,13 @@
                             @if($warehouse->status === 'Active')
 
                                 <span class="badge badge-success">
-                                    Active
+                                    အသုံးပြုနေဆဲ
                                 </span>
 
                             @else
 
                                 <span class="badge badge-danger">
-                                    Inactive
+                                    ပိတ်ထားသည်
                                 </span>
 
                             @endif
@@ -376,7 +376,7 @@
                     <tr>
 
                         <th>
-                            Created At
+                            စတင်ဖန်တီးခဲ့သည့် အချိန်
                         </th>
 
                         <td>
@@ -397,7 +397,7 @@
                     <tr>
 
                         <th>
-                            Last Updated
+                            နောက်ဆုံး ပြင်ဆင်ခဲ့သည့် အချိန်
                         </th>
 
                         <td>
@@ -437,7 +437,7 @@
             ) }}"
             class="edit-btn">
 
-            Edit Warehouse
+            ကုန်လှောင်ရုံ ပြင်ဆင်ရန်
 
         </a>
 
@@ -448,7 +448,7 @@
             ) }}"
             class="cancel-btn">
 
-            Back to Warehouses
+            ကုန်လှောင်ရုံ စာရင်းသို့ ပြန်သွားရန်
 
         </a>
 

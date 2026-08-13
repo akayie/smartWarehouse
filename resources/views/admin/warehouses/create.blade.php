@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('title')
-    Add Warehouse
+    ကုန်လှောင်ရုံ အသစ်ထည့်မည်
 @endsection
 
 
@@ -9,7 +9,7 @@
 
     <a href="{{ route('backend.warehouses.index') }}"
        class="btn btn-sm btn-outline">
-        ← Back
+        ← နောက်သို့
     </a>
 
 @endsection
@@ -29,7 +29,7 @@
         <h3 style="
             margin:0;
         ">
-            Add New Warehouse
+            ကုန်လှောင်ရုံ အသစ်ထည့်ရန်
         </h3>
 
         <p style="
@@ -37,7 +37,7 @@
             color:#6b7280;
             font-size:14px;
         ">
-            Register a new disaster relief warehouse.
+            သဘာဝဘေးအန္တရာယ် ကူညီကယ်ဆယ်ရေး ကုန်လှောင်ရုံအသစ် စာရင်းသွင်းပါ။
         </p>
 
     </div>
@@ -56,7 +56,7 @@
         ">
 
             <strong>
-                Please correct the following errors:
+                ကျေးဇူးပြု၍ အောက်ပါ အမှားများကို ပြင်ဆင်ပေးပါ -
             </strong>
 
             <ul style="
@@ -87,7 +87,7 @@
         <div class="form-group">
 
             <label for="name">
-                Warehouse Name
+                ကုန်လှောင်ရုံ အမည်
             </label>
 
             <input
@@ -95,7 +95,7 @@
                 id="name"
                 name="name"
                 value="{{ old('name') }}"
-                placeholder="e.g. Mandalay Central Hub"
+                placeholder="ဥပမာ - မန္တလေး ဗဟိုကုန်လှောင်ရုံ"
                 class="@error('name') error @enderror"
             >
 
@@ -114,7 +114,7 @@
         <div class="form-group">
 
             <label for="location">
-                Location
+                တည်နေရာ
             </label>
 
             <input
@@ -122,7 +122,7 @@
                 id="location"
                 name="location"
                 value="{{ old('location') }}"
-                placeholder="e.g. Mandalay Industrial Zone"
+                placeholder="ဥပမာ - မန္တလေး စက်မှုဇုန်"
                 class="@error('location') error @enderror"
             >
 
@@ -141,7 +141,7 @@
         <div class="form-group">
 
             <label for="phone">
-                Contact Phone
+                ဆက်သွယ်ရန် ဖုန်းနံပါတ်
             </label>
 
             <input
@@ -149,7 +149,7 @@
                 id="phone"
                 name="phone"
                 value="{{ old('phone') }}"
-                placeholder="e.g. 09xxxxxxxxx"
+                placeholder="ဥပမာ - ၀၉XXXXXXXXX"
                 class="@error('phone') error @enderror"
             >
 
@@ -168,7 +168,7 @@
         <div class="form-group">
 
             <label for="manager_id">
-                Warehouse Manager
+                ကုန်လှောင်ရုံ မန်နေဂျာ / တာဝန်ခံ
             </label>
 
             <select
@@ -177,7 +177,7 @@
                 class="@error('manager_id') error @enderror">
 
                 <option value="">
-                    Choose Manager
+                    မန်နေဂျာ ရွေးချယ်ပါ
                 </option>
 
                 @foreach($users as $user)
@@ -211,7 +211,7 @@
         <div class="form-group">
 
             <label for="status">
-                Status
+                အခြေအနေ
             </label>
 
             <select
@@ -224,7 +224,7 @@
                     {{ old('status', 'Active') === 'Active'
                         ? 'selected'
                         : '' }}>
-                    Active
+                    အသုံးပြုနေဆဲ
                 </option>
 
                 <option
@@ -232,7 +232,7 @@
                     {{ old('status') === 'Inactive'
                         ? 'selected'
                         : '' }}>
-                    Inactive
+                    ပိတ်ထားသည်
                 </option>
 
             </select>
@@ -261,7 +261,7 @@
                 type="submit"
                 class="btn btn-sm btn-primary">
 
-                Save Warehouse
+                ကုန်လှောင်ရုံ သိမ်းဆည်းမည်
 
             </button>
 
@@ -270,7 +270,7 @@
                 href="{{ route('backend.warehouses.index') }}"
                 class="btn btn-sm btn-outline">
 
-                Cancel
+                မလုပ်တော့ပါ
 
             </a>
 

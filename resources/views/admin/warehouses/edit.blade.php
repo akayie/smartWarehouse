@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('title')
-    Edit Warehouse
+    ကုန်လှောင်ရုံ ပြင်ဆင်ရန်
 @endsection
 
 
@@ -9,7 +9,7 @@
 
     <a href="{{ route('backend.warehouses.index') }}"
        class="btn btn-sm btn-outline">
-        ← Back
+        ← နောက်သို့
     </a>
 
 @endsection
@@ -35,7 +35,7 @@
             <h3 style="
                 margin:0 0 5px;
             ">
-                Edit Warehouse
+                ကုန်လှောင်ရုံ ပြင်ဆင်ရန်
             </h3>
 
             <p style="
@@ -43,7 +43,7 @@
                 color:#6b7280;
                 font-size:14px;
             ">
-                Update warehouse information and manager assignment.
+                ကုန်လှောင်ရုံ အချက်အလက်များနှင့် တာဝန်ခံ မန်နေဂျာကို ပြင်ဆင်မွမ်းမံပါ။
             </p>
 
         </div>
@@ -84,7 +84,7 @@
         ">
 
             <strong>
-                Please correct the following errors:
+                ကျေးဇူးပြု၍ အောက်ပါ အမှားများကို ပြင်ဆင်ပေးပါ -
             </strong>
 
             <ul style="
@@ -120,7 +120,7 @@
         <div class="form-group">
 
             <label for="name">
-                Warehouse Name
+                ကုန်လှောင်ရုံ အမည်
             </label>
 
             <input
@@ -131,7 +131,7 @@
                     'name',
                     $warehouse->name
                 ) }}"
-                placeholder="e.g. Mandalay Central Hub"
+                placeholder="ဥပမာ - မန္တလေး ဗဟိုကုန်လှောင်ရုံ"
                 class="@error('name') error @enderror"
             >
 
@@ -150,7 +150,7 @@
         <div class="form-group">
 
             <label for="location">
-                Location
+                တည်နေရာ
             </label>
 
             <input
@@ -161,7 +161,7 @@
                     'location',
                     $warehouse->location
                 ) }}"
-                placeholder="e.g. Mandalay Industrial Zone"
+                placeholder="ဥပမာ - မန္တလေး စက်မှုဇုန်"
                 class="@error('location') error @enderror"
             >
 
@@ -180,7 +180,7 @@
         <div class="form-group">
 
             <label for="phone">
-                Contact Phone
+                ဆက်သွယ်ရန် ဖုန်းနံပါတ်
             </label>
 
             <input
@@ -191,7 +191,7 @@
                     'phone',
                     $warehouse->phone
                 ) }}"
-                placeholder="e.g. 09xxxxxxxxx"
+                placeholder="ဥပမာ - ၀၉XXXXXXXXX"
                 class="@error('phone') error @enderror"
             >
 
@@ -210,7 +210,7 @@
         <div class="form-group">
 
             <label for="manager_id">
-                Warehouse Manager
+                ကုန်လှောင်ရုံ မန်နေဂျာ / တာဝန်ခံ
             </label>
 
             <select
@@ -219,7 +219,7 @@
                 class="@error('manager_id') error @enderror">
 
                 <option value="">
-                    Choose Manager
+                    မန်နေဂျာ ရွေးချယ်ပါ
                 </option>
 
                 @foreach($users as $user)
@@ -256,7 +256,7 @@
         <div class="form-group">
 
             <label for="status">
-                Status
+                အခြေအနေ
             </label>
 
             <select
@@ -272,7 +272,7 @@
                     ) === 'Active'
                         ? 'selected'
                         : '' }}>
-                    Active
+                    အသုံးပြုနေဆဲ
                 </option>
 
                 <option
@@ -283,7 +283,7 @@
                     ) === 'Inactive'
                         ? 'selected'
                         : '' }}>
-                    Inactive
+                    ပိတ်ထားသည်
                 </option>
 
             </select>
@@ -312,7 +312,7 @@
                 type="submit"
                 class="btn btn-sm btn-primary">
 
-                Update Warehouse
+                ပြင်ဆင်ချက်များ သိမ်းဆည်းမည်
 
             </button>
 
@@ -323,7 +323,7 @@
                 ) }}"
                 class="btn btn-sm btn-outline">
 
-                Cancel
+                မလုပ်တော့ပါ
 
             </a>
 

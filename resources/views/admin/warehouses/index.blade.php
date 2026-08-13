@@ -1,14 +1,14 @@
 @extends('layouts.admin')
 
 @section('title')
-    Warehouses
+    ကုန်လှောင်ရုံများ
 @endsection
 
 @section('button')
 
     <a href="{{ route('backend.warehouses.create') }}"
        class="btn btn-sm btn-primary">
-        + Add Warehouse
+        + ကုန်လှောင်ရုံ အသစ်ထည့်မည်
     </a>
 
 @endsection
@@ -33,7 +33,7 @@
             <h3 style="
                 margin:0 0 5px 0;
             ">
-                Warehouse Management
+                ကုန်လှောင်ရုံများ စီမံခန့်ခွဲမှု
             </h3>
 
             <p style="
@@ -41,7 +41,7 @@
                 color:#6b7280;
                 font-size:14px;
             ">
-                Manage relief warehouses, locations and assigned managers.
+                ကူညီကယ်ဆယ်ရေး ကုန်လှောင်ရုံများ၊ တည်နေရာများနှင့် တာဝန်ခံ မန်နေဂျာများကို စီမံခန့်ခွဲပါ။
             </p>
 
         </div>
@@ -54,7 +54,7 @@
             font-weight:600;
             color:#374151;
         ">
-            Total: {{ $warehouses->total() }}
+            စုစုပေါင်း - {{ $warehouses->total() }}
         </div>
 
     </div>
@@ -106,7 +106,7 @@
             margin-bottom:20px;
         ">
 
-            <strong>Please check the following:</strong>
+            <strong>ကျေးဇူးပြု၍ အောက်ပါအချက်များကို စစ်ဆေးပါ -</strong>
 
             <ul style="margin:8px 0 0 20px;">
 
@@ -132,20 +132,20 @@
 
                 <tr>
 
-                    <th>Code</th>
+                    <th>ကုဒ်နံပါတ်</th>
 
-                    <th>Name</th>
+                    <th>အမည်</th>
 
-                    <th>Location</th>
+                    <th>တည်နေရာ</th>
 
-                    <th>Phone</th>
+                    <th>ဖုန်းနံပါတ်</th>
 
-                    <th>Manager</th>
+                    <th>မန်နေဂျာ / တာဝန်ခံ</th>
 
-                    <th>Status</th>
+                    <th>အခြေအနေ</th>
 
                     <th style="text-align:center;">
-                        Action
+                        လုပ်ဆောင်ချက်
                     </th>
 
                 </tr>
@@ -212,7 +212,7 @@
                                 <span style="
                                     color:#9ca3af;
                                 ">
-                                    Not Assigned
+                                    တာဝန်ပေးထားခြင်း မရှိပါ
                                 </span>
 
                             @endif
@@ -226,13 +226,13 @@
                             @if($warehouse->status === 'Active')
 
                                 <span class="badge badge-success">
-                                    Active
+                                    အသုံးပြုနေဆဲ
                                 </span>
 
                             @else
 
                                 <span class="badge badge-secondary">
-                                    Inactive
+                                    ပိတ်ထားသည်
                                 </span>
 
                             @endif
@@ -252,7 +252,7 @@
                                 $warehouse->id
                             ) }}"
                                class="btn btn-sm btn-outline">
-                                View
+                                ကြည့်မည်
                             </a>
 
 
@@ -262,7 +262,7 @@
                                 $warehouse->id
                             ) }}"
                                class="edit-btn">
-                                Edit
+                                ပြင်ဆင်မည်
                             </a>
 
 
@@ -272,7 +272,7 @@
                                 class="delete-btn delete"
                                 data-id="{{ $warehouse->id }}"
                                 data-name="{{ $warehouse->name }}">
-                                Delete
+                                ဖျက်မည်
                             </button>
 
                         </td>
@@ -300,20 +300,20 @@
                             <strong style="
                                 font-size:16px;
                             ">
-                                No warehouses found
+                                ကုန်လှောင်ရုံ မရှိသေးပါ
                             </strong>
 
                             <p style="
                                 margin:8px 0 15px;
                             ">
-                                Create your first relief warehouse.
+                                ပထမဦးဆုံး ကူညီကယ်ဆယ်ရေး ကုန်လှောင်ရုံကို စတင်ဖန်တီးပါ။
                             </p>
 
                             <a href="{{ route(
                                 'backend.warehouses.create'
                             ) }}"
                                class="btn btn-sm btn-primary">
-                                + Add Warehouse
+                                + ကုန်လှောင်ရုံ အသစ်ထည့်မည်
                             </a>
 
                         </td>
@@ -356,7 +356,7 @@
             <div class="modal-header">
 
                 <h5 class="modal-title">
-                    Delete Warehouse
+                    ကုန်လှောင်ရုံကို ဖျက်မည်
                 </h5>
 
                 <button
@@ -371,8 +371,7 @@
             <div class="modal-body">
 
                 <p>
-                    Are you sure you want to delete
-                    <strong id="warehouseName"></strong>?
+                    သင်သည် <strong id="warehouseName"></strong> ကို ဖျက်ရန် သေချာပါသလား။
                 </p>
 
                 <p style="
@@ -380,7 +379,7 @@
                     font-size:14px;
                     margin-bottom:0;
                 ">
-                    This action cannot be undone.
+                    ဤလုပ်ဆောင်ချက်ကို ပြန်လည်ပြင်ဆင်၍ ရနိုင်မည်မဟုတ်ပါ။
                 </p>
 
             </div>
@@ -392,7 +391,7 @@
                     type="button"
                     class="cancel-btn"
                     data-bs-dismiss="modal">
-                    Cancel
+                    မလုပ်တော့ပါ
                 </button>
 
 
@@ -408,7 +407,7 @@
                     <button
                         type="submit"
                         class="delete-btn">
-                        Yes, Delete
+                        ဟုတ်ကဲ့၊ ဖျက်မည်
                     </button>
 
                 </form>
