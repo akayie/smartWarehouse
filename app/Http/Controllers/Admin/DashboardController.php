@@ -8,6 +8,7 @@ use App\Models\Item;
 use App\Models\ReliefRequest;
 use App\Models\Dispatch;
 use App\Models\ActivityLog;
+use App\Models\Warehouse; // <--- Warehouse Model ကို Import လုပ်ထားပါသည်
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
 
@@ -77,8 +78,14 @@ class DashboardController extends Controller
         ));
     }
 
+    /**
+     * Render the QR / Barcode Scan Page
+     */
     public function scan()
     {
-        return view('admin.scan');
+        // Active ဖြစ်သော Warehouse များကို ဆွဲယူပြီး View ထံ Compact ဖြင့် ပါးပေးထားပါသည်
+        $warehouses = Warehouse::orderBy('name', 'asc')->get();
+
+        return view('admin.scan', compact('warehouses'));
     }
 }

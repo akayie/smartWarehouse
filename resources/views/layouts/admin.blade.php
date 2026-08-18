@@ -237,7 +237,21 @@
 
                 </li>
 
+<!-- Donation Payments -->
 
+                <li>
+
+                    <a id="nav-adm-donation_payments"
+                       class="{{ request()->routeIs('backend.donation_payments.*') ? 'active' : '' }}"
+                       href="{{ route('backend.donation_payments.index') }}">
+
+                        <i class="fa-solid fa-hand-holding-heart"></i>
+
+                        <span>ငွေကြေး လှူဒါန်းမှု</span>
+
+                    </a>
+
+                </li>
                 <!-- Relief Requests -->
 
                 <li>

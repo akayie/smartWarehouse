@@ -21,16 +21,16 @@ class DistributionController extends Controller
     public function index()
     {
         $distributions = Distribution::with([
-            'request',
-            'request.disaster',
-            'warehouse',
-            'handledBy',
-            'distributionItems.item',
-        ])
-        ->orderBy('id', 'DESC')
-        ->paginate(15);
+        'reliefRequest',           // <--- request အစား reliefRequest သို့ ပြောင်းပါ
+        'reliefRequest.disaster',  // <--- request.disaster အစား reliefRequest.disaster သို့ ပြောင်းပါ
+        'warehouse',
+        'handledBy',
+        'distributionItems.item',
+    ])
+    ->orderBy('id', 'DESC')
+    ->paginate(15);
 
-        return view('admin.distributions.index', compact('distributions'));
+    return view('admin.distributions.index', compact('distributions'));
     }
 
     /**

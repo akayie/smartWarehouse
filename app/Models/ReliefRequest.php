@@ -5,15 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-
+use App\Traits\BelongsToWarehouse;
 class ReliefRequest extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes,BelongsToWarehouse;
 
     protected $fillable = [
         'disaster_id',
+        'warehouse_id',
         'requested_by',
         'location',
+        'latitude',
+        'longitude',
         'request_date',
         'status',
         'note',
@@ -23,47 +26,33 @@ class ReliefRequest extends Model
         'request_date' => 'date',
     ];
 
-    /**
-     * Alias for requestedBy relationship
-     */
     public function user()
     {
         return $this->belongsTo(User::class, 'requested_by');
     }
-    /**
-     * Relief request belongs to a disaster.
-     */
+
     public function disaster()
     {
-        return $this->belongsTo(
-            Disaster::class
-        );
+        return $this->belongsTo(Disaster::class);
     }
 
-    /**
-     * Relief request belongs to the user
-     * who created the request.
-     */
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
     public function requestedBy()
     {
-        return $this->belongsTo(
-            User::class,
-            'requested_by'
-        );
+        return $this->belongsTo(User::class, 'requested_by');
     }
 
     public function requestItems()
-{
-    return $this->hasMany(
-        RequestItem::class,
-        'request_id'
-    );
-}
-public function distributions()
-{
-    return $this->hasMany(
-        Distribution::class,
-        'request_id'
-    );
-}
+    {
+        return $this->hasMany(RequestItem::class, 'request_id');
+    }
+
+    public function distributions()
+    {
+        return $this->hasMany(Distribution::class, 'request_id');
+    }
 }

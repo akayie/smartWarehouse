@@ -8,6 +8,7 @@ use App\Models\Inventory;
 use App\Models\Warehouse;
 use App\Models\Item;
 use App\Http\Requests\InventoryRequest;
+use Illuminate\Support\Facades\Auth;
 
 class InventoryController extends Controller
 {
@@ -16,6 +17,7 @@ class InventoryController extends Controller
      */
     public function index()
     {
+        // Global Scope ကြောင့် Manager ဖြစ်ပါက သူ၏ Warehouse Data သာ ထွက်လာမည်။
         $inventories = Inventory::with([
                 'warehouse',
                 'item'
@@ -34,9 +36,20 @@ class InventoryController extends Controller
      */
     public function create()
     {
-        $warehouses = Warehouse::where('status', 'Active')
-            ->orderBy('name')
-            ->get();
+        $user = Auth::user();
+
+        // Warehouse Manager ဖြစ်ပါက ၎င်းနှင့် သက်ဆိုင်သော Warehouse များကိုသာ Dropdown တွင် ပြမည်။
+        if ($user->role === 'warehouse_manager') {
+            $warehouses = $user->warehouses()
+                ->where('status', 'Active')
+                ->orderBy('name')
+                ->get();
+        } else {
+            // Admin ဖြစ်ပါက Active ဖြစ်သော Warehouse အားလုံးကို ပြမည်။
+            $warehouses = Warehouse::where('status', 'Active')
+                ->orderBy('name')
+                ->get();
+        }
 
         $items = Item::where('status', 'Active')
             ->orderBy('name')
@@ -53,14 +66,24 @@ class InventoryController extends Controller
      */
     public function store(InventoryRequest $request)
     {
-        // updateOrCreate prevents duplicate warehouse + item entries
+        $user = Auth::user();
+        $data = $request->validated();
+
+        // Warehouse Manager ဖြစ်ပါက Form မှ warehouse_id မပါခဲ့လျှင် မိမိ၏ ပထမဆုံး Warehouse ID ကို အလိုအလျောက် Assign လုပ်မည်။
+        if ($user->role === 'warehouse_manager') {
+            $warehouseId = $request->warehouse_id ?? $user->warehouses()->first()?->id;
+        } else {
+            $warehouseId = $request->warehouse_id;
+        }
+
+        // updateOrCreate ဖြင့် Duplicate Entry မဖြစ်အောင် ထိန်းသိမ်းမည်။
         Inventory::updateOrCreate(
             [
-                'warehouse_id' => $request->warehouse_id,
-                'item_id'      => $request->item_id,
+                'warehouse_id' => $warehouseId,
+                'item_id'      => $data['item_id'],
             ],
             [
-                'quantity'     => $request->quantity,
+                'quantity'     => $data['quantity'],
             ]
         );
 
@@ -72,13 +95,15 @@ class InventoryController extends Controller
     /**
      * Display the specified inventory item.
      */
-    public function show(string $id)
+    public function show(Inventory $inventory)
     {
-        $inventory = Inventory::with([
-                'warehouse',
-                'item.category'
-            ])
-            ->findOrFail($id);
+        // Policy ဖြင့် အခြား Warehouse ၏ Data ကို Direct URL မှ ကြည့်ရှုခြင်းအား တားဆီးမည်။
+        $this->authorize('view', $inventory);
+
+        $inventory->load([
+            'warehouse',
+            'item.category'
+        ]);
 
         return view(
             'admin.inventories.show',
@@ -89,13 +114,23 @@ class InventoryController extends Controller
     /**
      * Show the form for editing the specified inventory entry.
      */
-    public function edit(string $id)
+    public function edit(Inventory $inventory)
     {
-        $inventory = Inventory::findOrFail($id);
+        // Policy ဖြင့် စစ်ဆေးမည်
+        $this->authorize('update', $inventory);
 
-        $warehouses = Warehouse::where('status', 'Active')
-            ->orderBy('name')
-            ->get();
+        $user = Auth::user();
+
+        if ($user->role === 'warehouse_manager') {
+            $warehouses = $user->warehouses()
+                ->where('status', 'Active')
+                ->orderBy('name')
+                ->get();
+        } else {
+            $warehouses = Warehouse::where('status', 'Active')
+                ->orderBy('name')
+                ->get();
+        }
 
         $items = Item::where('status', 'Active')
             ->orderBy('name')
@@ -110,9 +145,10 @@ class InventoryController extends Controller
     /**
      * Update the specified inventory in storage.
      */
-    public function update(InventoryRequest $request, string $id)
+    public function update(InventoryRequest $request, Inventory $inventory)
     {
-        $inventory = Inventory::findOrFail($id);
+        // Policy Check
+        $this->authorize('update', $inventory);
 
         $inventory->update($request->validated());
 
@@ -124,9 +160,10 @@ class InventoryController extends Controller
     /**
      * Remove the specified inventory entry from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Inventory $inventory)
     {
-        $inventory = Inventory::findOrFail($id);
+        // Policy Check
+        $this->authorize('delete', $inventory);
 
         $inventory->delete();
 

@@ -73,39 +73,47 @@ Route::get('/campaigns', [FrontController::class, 'campaigns'])
 
 Route::middleware(['auth'])->group(function () {
 
-    // My Relief Requests
-    Route::get('/my-requests', [FrontController::class, 'myRequests'])
-        ->name('public.my-requests');
-
-    // Donation History
-    Route::get('/donation-history', [FrontController::class, 'donationHistory'])
-        ->name('public.don-history');
+    Route::get(
+        '/my-requests',
+        [FrontController::class, 'myRequests']
+    )->name('public.my-requests');
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Public Relief Requests
-    |--------------------------------------------------------------------------
-    */
-
-    Route::get('/request-help', [FrontController::class, 'createRequest'])
-        ->name('public.request.create');
-
-    Route::post('/request-help', [FrontController::class, 'storeRequest'])
-        ->name('public.request.store');
+    Route::get(
+        '/donation-history',
+        [FrontController::class, 'donationHistory']
+    )->name('public.don-history');
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Public Donations
-    |--------------------------------------------------------------------------
-    */
+    Route::get(
+        '/request-help',
+        [FrontController::class, 'createRequest']
+    )->name('public.request.create');
 
-    Route::get('/donate', [FrontController::class, 'createDonation'])
-        ->name('public.donate.create');
 
-    Route::post('/donate', [FrontController::class, 'storeDonation'])
-        ->name('public.donate.store');
+    Route::post(
+        '/request-help',
+        [FrontController::class, 'storeRequest']
+    )->name('public.request.store');
+
+
+    Route::get(
+        '/get-warehouse-items/{warehouseId}',
+        [FrontController::class, 'getWarehouseItems']
+    )->name('public.warehouse.items');
+
+
+    Route::get(
+        '/donate',
+        [FrontController::class, 'createDonation']
+    )->name('public.donate.create');
+
+
+    Route::post(
+        '/donate',
+        [FrontController::class, 'storeDonation']
+    )->name('public.donate.store');
+
 });
 
 
@@ -113,16 +121,12 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 | Admin / Backend Routes
 |--------------------------------------------------------------------------
-|
-| Protected with auth + checkrole middleware
-|
 */
 
 Route::prefix('backend')
     ->name('backend.')
     ->middleware(['auth', 'checkrole'])
     ->group(function () {
-
 
     /*
     |--------------------------------------------------------------------------
@@ -166,7 +170,6 @@ Route::prefix('backend')
     |--------------------------------------------------------------------------
     */
 
-    // Must be before items/{item}
     Route::get(
         'items/get-by-barcode/{barcode}',
         [ItemController::class, 'getByBarcode']
@@ -241,21 +244,16 @@ Route::prefix('backend')
     |--------------------------------------------------------------------------
     */
 
-    // Approve Relief Request
     Route::patch(
         'relief_requests/{reliefRequest}/approve',
         [ReliefRequestController::class, 'approve']
     )->name('relief_requests.approve');
 
-
-    // Reject Relief Request
     Route::patch(
         'relief_requests/{reliefRequest}/reject',
         [ReliefRequestController::class, 'reject']
     )->name('relief_requests.reject');
 
-
-    // Resource Routes
     Route::resource(
         'relief_requests',
         ReliefRequestController::class

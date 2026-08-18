@@ -1,708 +1,121 @@
 @extends('layouts.admin')
 
-@section('title')
-ကယ်ဆယ်ရေးအကူအညီ တောင်းခံမှုအသေးစိတ်
-@endsection
-
-@section('button')
-
-```
-<a href="{{ route('backend.relief_requests.index') }}"
-   class="btn btn-secondary">
-    ← တောင်းခံမှုများသို့ ပြန်သွားရန်
-</a>
-```
-
-@endsection
-
 @section('content')
-
-<div class="row">
-
-```
-{{-- LEFT COLUMN --}}
-<div class="col-lg-8">
-
-    {{-- Request Overview --}}
-    <div class="card mb-4">
-
-        <div class="card-header d-flex justify-content-between align-items-center">
-
-            <div>
-                <h4 class="mb-1">
-                    ကယ်ဆယ်ရေးအကူအညီ တောင်းခံမှုအသေးစိတ်
-                </h4>
-
-                <small class="text-muted">
-                    တောင်းခံမှုအမှတ် -
-                    #REQ-{{ str_pad($reliefRequest->id, 4, '0', STR_PAD_LEFT) }}
-                </small>
-            </div>
-
-            {{-- Status --}}
-            <div>
-
-                @if($reliefRequest->status === 'Pending')
-
-                    <span class="badge bg-warning text-dark">
-                        စောင့်ဆိုင်းနေသည်
-                    </span>
-
-                @elseif($reliefRequest->status === 'Approved')
-
-                    <span class="badge bg-primary">
-                        အတည်ပြုပြီး
-                    </span>
-
-                @elseif($reliefRequest->status === 'Rejected')
-
-                    <span class="badge bg-danger">
-                        ပယ်ဖျက်ထားသည်
-                    </span>
-
-                @elseif($reliefRequest->status === 'Processing')
-
-                    <span class="badge bg-info">
-                        ဆောင်ရွက်နေသည်
-                    </span>
-
-                @elseif($reliefRequest->status === 'Completed')
-
-                    <span class="badge bg-success">
-                        ပြီးစီးပြီ
-                    </span>
-
-                @else
-
-                    <span class="badge bg-secondary">
-                        ပယ်ဖျက်ထားသည်
-                    </span>
-
-                @endif
-
-            </div>
-
-        </div>
-
-        <div class="card-body">
-
-            <div class="table-responsive">
-
-                <table class="table table-bordered">
-
-                    {{-- Request ID --}}
-                    <tr>
-                        <th width="220">
-                            တောင်းခံမှုအမှတ်
-                        </th>
-
-                        <td>
-                            <strong>
-                                #REQ-{{ str_pad(
-                                    $reliefRequest->id,
-                                    4,
-                                    '0',
-                                    STR_PAD_LEFT
-                                ) }}
-                            </strong>
-                        </td>
-                    </tr>
-
-                    {{-- Disaster --}}
-                    <tr>
-                        <th>
-                            ဘေးအန္တရာယ်ဖြစ်စဉ်
-                        </th>
-
-                        <td>
-
-                            <strong>
-                                {{ $reliefRequest->disaster->name ?? 'အချက်အလက်မရှိပါ' }}
-                            </strong>
-
-                            @if($reliefRequest->disaster)
-
-                                <br>
-
-                                <small class="text-muted">
-                                    အမျိုးအစား -
-                                    {{ $reliefRequest->disaster->type ?? '-' }}
-                                </small>
-
-                            @endif
-
-                        </td>
-                    </tr>
-
-                    {{-- Requested By --}}
-                    <tr>
-                        <th>
-                            တောင်းခံသူ
-                        </th>
-
-                        <td>
-
-                            <strong>
-                                {{ $reliefRequest->requestedBy->name ?? 'အချက်အလက်မရှိပါ' }}
-                            </strong>
-
-                            <br>
-
-                            <small class="text-muted">
-                                {{ $reliefRequest->requestedBy->email ?? '-' }}
-                            </small>
-
-                        </td>
-                    </tr>
-
-                    {{-- Location --}}
-                    <tr>
-                        <th>
-                            အကူအညီတောင်းခံသည့်နေရာ
-                        </th>
-
-                        <td>
-                            📍 {{ $reliefRequest->location }}
-                        </td>
-                    </tr>
-
-                    {{-- Request Date --}}
-                    <tr>
-                        <th>
-                            တောင်းခံသည့်ရက်စွဲ
-                        </th>
-
-                        <td>
-
-                            {{ $reliefRequest->request_date
-                                ? $reliefRequest->request_date->format('d-m-Y')
-                                : '-'
-                            }}
-
-                        </td>
-                    </tr>
-
-                    {{-- Urgency --}}
-                    <tr>
-                        <th>
-                            အရေးပေါ်အဆင့်
-                        </th>
-
-                        <td>
-
-                            @if($reliefRequest->urgency === 'High')
-
-                                <span class="badge bg-danger">
-                                    အရေးပေါ်မြင့်
-                                </span>
-
-                            @elseif($reliefRequest->urgency === 'Medium')
-
-                                <span class="badge bg-warning text-dark">
-                                    အလယ်အလတ်
-                                </span>
-
-                            @elseif($reliefRequest->urgency === 'Low')
-
-                                <span class="badge bg-success">
-                                    အရေးပေါ်နိမ့်
-                                </span>
-
-                            @else
-
-                                <span class="text-muted">
-                                    -
-                                </span>
-
-                            @endif
-
-                        </td>
-                    </tr>
-
-                    {{-- Status --}}
-                    <tr>
-                        <th>
-                            တောင်းခံမှုအခြေအနေ
-                        </th>
-
-                        <td>
-
-                            @if($reliefRequest->status === 'Pending')
-
-                                <span class="badge bg-warning text-dark">
-                                    စောင့်ဆိုင်းနေသည်
-                                </span>
-
-                            @elseif($reliefRequest->status === 'Approved')
-
-                                <span class="badge bg-primary">
-                                    အတည်ပြုပြီး
-                                </span>
-
-                            @elseif($reliefRequest->status === 'Rejected')
-
-                                <span class="badge bg-danger">
-                                    ပယ်ဖျက်ထားသည်
-                                </span>
-
-                            @elseif($reliefRequest->status === 'Processing')
-
-                                <span class="badge bg-info">
-                                    ဆောင်ရွက်နေသည်
-                                </span>
-
-                            @elseif($reliefRequest->status === 'Completed')
-
-                                <span class="badge bg-success">
-                                    ပြီးစီးပြီ
-                                </span>
-
-                            @else
-
-                                <span class="badge bg-secondary">
-                                    ပယ်ဖျက်ထားသည်
-                                </span>
-
-                            @endif
-
-                        </td>
-                    </tr>
-
-                    {{-- Note --}}
-                    <tr>
-                        <th>
-                            မှတ်ချက်
-                        </th>
-
-                        <td>
-
-                            @if($reliefRequest->note)
-
-                                {{ $reliefRequest->note }}
-
-                            @else
-
-                                <span class="text-muted">
-                                    ထပ်မံဖြည့်စွက်ထားသော အချက်အလက်မရှိပါ။
-                                </span>
-
-                            @endif
-
-                        </td>
-                    </tr>
-
-                </table>
-
-            </div>
-
-        </div>
-
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">ကယ်ဆယ်ရေး အကူအညီ တောင်းခံမှု အသေးစိတ် (#{{ $reliefRequest->id }})</h3>
+        <a href="{{ route('backend.relief_requests.index') }}" class="btn btn-secondary btn-sm">နောက်သို့</a>
     </div>
 
-
-    {{-- Required Items --}}
-    <div class="card mb-4">
-
-        <div class="card-header">
-
-            <h4 class="mb-0">
-                လိုအပ်သော ကယ်ဆယ်ရေးပစ္စည်းများ
-            </h4>
-
-        </div>
-
-        <div class="card-body">
-
-            @if(
-                $reliefRequest->items &&
-                $reliefRequest->items->count()
-            )
-
-                <div class="table-responsive">
-
-                    <table class="table table-bordered table-hover">
-
-                        <thead>
-                            <tr>
-                                <th width="70">စဉ်</th>
-                                <th>ပစ္စည်းအမည်</th>
-                                <th>အရေအတွက်</th>
-                                <th>ယူနစ်</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-
-                            @foreach(
-                                $reliefRequest->items
-                                as $requestItem
-                            )
-
-                                <tr>
-
-                                    <td>
-                                        {{ $loop->iteration }}
-                                    </td>
-
-                                    <td>
-                                        <strong>
-                                            {{
-                                                $requestItem->item->name
-                                                ?? 'ပစ္စည်းအမည်မသိရှိပါ'
-                                            }}
-                                        </strong>
-                                    </td>
-
-                                    <td>
-                                        <strong>
-                                            {{ $requestItem->quantity }}
-                                        </strong>
-                                    </td>
-
-                                    <td>
-                                        {{
-                                            $requestItem->unit
-                                            ?? '-'
-                                        }}
-                                    </td>
-
-                                </tr>
-
-                            @endforeach
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-
-            @else
-
-                <div class="text-center py-4">
-
-                    <p class="text-muted mb-0">
-                        တောင်းခံထားသော ကယ်ဆယ်ရေးပစ္စည်းများ မရှိပါ။
-                    </p>
-
-                </div>
-
-            @endif
-
-        </div>
-
-    </div>
-
-
-    {{-- Action Section --}}
-    @if($reliefRequest->status === 'Pending')
-
-        <div class="card mb-4">
-
-            <div class="card-header">
-
-                <h4 class="mb-0">
-                    တောင်းခံမှု အတည်ပြုခြင်း
-                </h4>
-
-            </div>
-
-            <div class="card-body">
-
-                <p class="text-muted">
-                    တောင်းခံထားသော ပစ္စည်းများနှင့် အချက်အလက်များကို
-                    စစ်ဆေးပြီးနောက် တောင်းခံမှုကို အတည်ပြုခြင်း သို့မဟုတ်
-                    ပယ်ဖျက်ခြင်း ပြုလုပ်နိုင်ပါသည်။
-                </p>
-
-                <div class="d-flex gap-2">
-
-                    {{-- Approve --}}
-                    <form
-                        action="{{ route(
-                            'backend.relief_requests.approve',
-                            $reliefRequest->id
-                        ) }}"
-                        method="POST"
-                    >
-
-                        @csrf
-                        @method('PATCH')
-
-                        <button
-                            type="submit"
-                            class="btn btn-primary"
-                            onclick="return confirm(
-                                'ဤကယ်ဆယ်ရေးအကူအညီ တောင်းခံမှုကို အတည်ပြုပြီး ပစ္စည်းများ ခွဲဝေပေးမည်မှာ သေချာပါသလား?'
-                            )"
-                        >
-                            ✓ အတည်ပြုပြီး ပစ္စည်းခွဲဝေပေးရန်
-                        </button>
-
-                    </form>
-
-
-                    {{-- Reject --}}
-                    <form
-                        action="{{ route(
-                            'backend.relief_requests.reject',
-                            $reliefRequest->id
-                        ) }}"
-                        method="POST"
-                    >
-
-                        @csrf
-                        @method('PATCH')
-
-                        <button
-                            type="submit"
-                            class="btn btn-outline-danger"
-                            onclick="return confirm(
-                                'ဤတောင်းခံမှုကို ပယ်ဖျက်ရန် သေချာပါသလား?'
-                            )"
-                        >
-                            ✕ ပယ်ဖျက်ရန်
-                        </button>
-
-                    </form>
-
-                </div>
-
-            </div>
-
-        </div>
-
+    @if(session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
 
-</div>
+    <div class="row">
+        <div class="col-md-8">
+            {{-- Request Information --}}
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white font-weight-bold">အခြေခံ အချက်အလက်များ</div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">ဘေးအန္တရာယ်</th>
+                            <td>{{ $reliefRequest->disaster->name ?? 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th>ထုတ်ယူမည့် ဂိုဒေါင်</th>
+                            <td>{{ $reliefRequest->warehouse->name ?? 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th>တောင်းခံသူ</th>
+                            <td>{{ $reliefRequest->requestedBy->name ?? 'အများပြည်သူ' }}</td>
+                        </tr>
+                        <tr>
+                            <th>တည်နေရာ</th>
+                            <td>{{ $reliefRequest->location }}</td>
+                        </tr>
+                        <tr>
+                            <th>အခြေအနေ (Status)</th>
+                            <td>
+                                @if($reliefRequest->status === 'Approved')
+                                    <span class="badge bg-success">Approved</span>
+                                @elseif($reliefRequest->status === 'Rejected')
+                                    <span class="badge bg-danger">Rejected</span>
+                                @else
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>မှတ်ချက်</th>
+                            <td>{{ $reliefRequest->note ?? '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
 
-
-{{-- RIGHT COLUMN --}}
-<div class="col-lg-4">
-
-    {{-- Request Summary --}}
-    <div class="card mb-4">
-
-        <div class="card-header">
-
-            <h4 class="mb-0">
-                တောင်းခံမှု အကျဉ်းချုပ်
-            </h4>
-
+            {{-- Items Requested --}}
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white font-weight-bold">တောင်းခံထားသော ပစ္စည်းများ</div>
+                <div class="card-body p-0">
+                    <table class="table table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>ပစ္စည်းအမည်</th>
+                                <th>အရေအတွက်</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($reliefRequest->requestItems as $key => $reqItem)
+                                <tr>
+                                    <td>{{ $key + 1 }}</td>
+                                    <td>{{ $reqItem->item->name ?? 'N/A' }}</td>
+                                    <td>{{ $reqItem->quantity }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">တောင်းခံထားသော ပစ္စည်း မရှိပါ။</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
-        <div class="card-body">
+        {{-- Actions Sidebar --}}
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white font-weight-bold">လုပ်ဆောင်ချက်များ</div>
+                <div class="card-body">
+                    @if($reliefRequest->status === 'Pending')
+                        <form action="{{ route('backend.relief_requests.approve', $reliefRequest->id) }}" method="POST" class="mb-2">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="btn btn-success w-100" onclick="return confirm('အတည်ပြုမှာ သေချာပါသလား?')">
+                                အတည်ပြုမည် (Approve)
+                            </button>
+                        </form>
 
-            <div class="mb-3">
-
-                <small class="text-muted">
-                    တောင်းခံမှုအမှတ်
-                </small>
-
-                <h5 class="mb-0">
-                    #REQ-{{ str_pad(
-                        $reliefRequest->id,
-                        4,
-                        '0',
-                        STR_PAD_LEFT
-                    ) }}
-                </h5>
-
+                        <form action="{{ route('backend.relief_requests.reject', $reliefRequest->id) }}" method="POST">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="btn btn-danger w-100" onclick="return confirm('ပယ်ဖျက်မှာ သေချာပါသလား?')">
+                                ပယ်ဖျက်မည် (Reject)
+                            </button>
+                        </form>
+                    @else
+                        <div class="alert alert-info mb-0">
+                            ဤတောင်းခံမှုကို <strong>{{ $reliefRequest->status }}</strong> ပြုလုပ်ပြီး ဖြစ်ပါသည်။
+                        </div>
+                    @endif
+                </div>
             </div>
-
-            <div class="mb-3">
-
-                <small class="text-muted">
-                    တောင်းခံသူ
-                </small>
-
-                <h5 class="mb-0">
-
-                    {{
-                        $reliefRequest->requestedBy->name
-                        ?? 'အချက်အလက်မရှိပါ'
-                    }}
-
-                </h5>
-
-            </div>
-
-            <div class="mb-3">
-
-                <small class="text-muted">
-                    တောင်းခံသည့်နေရာ
-                </small>
-
-                <h5 class="mb-0">
-
-                    {{ $reliefRequest->location }}
-
-                </h5>
-
-            </div>
-
-            <div class="mb-3">
-
-                <small class="text-muted">
-                    လိုအပ်သော ပစ္စည်းအမျိုးအစား
-                </small>
-
-                <h5 class="mb-0">
-
-                    {{
-                        $reliefRequest->items
-                        ? $reliefRequest->items->count()
-                        : 0
-                    }}
-
-                    မျိုး
-
-                </h5>
-
-            </div>
-
-            <div>
-
-                <small class="text-muted">
-                    တောင်းခံသည့်ရက်စွဲ
-                </small>
-
-                <h5 class="mb-0">
-
-                    {{ $reliefRequest->request_date
-                        ? $reliefRequest->request_date->format('d-m-Y')
-                        : '-'
-                    }}
-
-                </h5>
-
-            </div>
-
         </div>
-
     </div>
-
-
-    {{-- Requester Information --}}
-    <div class="card mb-4">
-
-        <div class="card-header">
-
-            <h4 class="mb-0">
-                တောင်းခံသူ၏ အချက်အလက်
-            </h4>
-
-        </div>
-
-        <div class="card-body">
-
-            <div class="mb-3">
-
-                <small class="text-muted">
-                    အမည်
-                </small>
-
-                <div>
-                    {{
-                        $reliefRequest->requestedBy->name
-                        ?? 'အချက်အလက်မရှိပါ'
-                    }}
-                </div>
-
-            </div>
-
-            <div class="mb-3">
-
-                <small class="text-muted">
-                    အီးမေးလ်
-                </small>
-
-                <div>
-                    {{
-                        $reliefRequest->requestedBy->email
-                        ?? '-'
-                    }}
-                </div>
-
-            </div>
-
-            <div>
-
-                <small class="text-muted">
-                    ဖုန်းနံပါတ်
-                </small>
-
-                <div>
-                    {{
-                        $reliefRequest->requestedBy->phone
-                        ?? '-'
-                    }}
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    {{-- Record Information --}}
-    <div class="card">
-
-        <div class="card-header">
-
-            <h4 class="mb-0">
-                မှတ်တမ်းအချက်အလက်
-            </h4>
-
-        </div>
-
-        <div class="card-body">
-
-            <div class="mb-3">
-
-                <small class="text-muted">
-                    စတင်မှတ်တမ်းတင်သည့်အချိန်
-                </small>
-
-                <div>
-
-                    {{ $reliefRequest->created_at
-                        ? $reliefRequest->created_at->format(
-                            'd-m-Y H:i:s'
-                        )
-                        : '-'
-                    }}
-
-                </div>
-
-            </div>
-
-            <div>
-
-                <small class="text-muted">
-                    နောက်ဆုံးပြင်ဆင်သည့်အချိန်
-                </small>
-
-                <div>
-
-                    {{ $reliefRequest->updated_at
-                        ? $reliefRequest->updated_at->format(
-                            'd-m-Y H:i:s'
-                        )
-                        : '-'
-                    }}
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
 </div>
-```
-
-</div>
-
 @endsection

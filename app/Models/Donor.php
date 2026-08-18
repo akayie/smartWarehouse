@@ -16,8 +16,9 @@ class Donor extends Model
         'email',
         'address',
     ];
+
     public function donations()
-{
-    return $this->hasMany(Donation::class);
-}
+    {
+        return $this->hasMany(Donation::class);
+    }
 }

@@ -3,212 +3,222 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Donation;
 use App\Models\DonationItem;
+use App\Models\DonationPayment;
 use App\Models\Donor;
-use App\Models\Warehouse;
 use App\Models\Item;
-use App\Models\Inventory;
-use App\Models\StockMovement;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DonationController extends Controller
 {
     /**
-     * Display a listing of the donations.
+     * Show admin list of donations.
+     */
+    /**
+     * Show admin list of donations.
      */
     public function index()
     {
-        $donations = Donation::with(['donor', 'warehouse', 'donationItems.item'])
-            ->latest('id')
-            ->paginate(15);
+        $donations = Donation::with(['donor', 'warehouse', 'donationItems.item', 'payment'])
+            ->latest()
+            ->paginate(10);
 
+        // 'donations.index' အစား admin folder ထည့်ပေးပါ
         return view('admin.donations.index', compact('donations'));
     }
 
     /**
-     * Show the form for creating a new donation.
+     * Show donation creation form.
      */
     public function create()
     {
-        $donors = Donor::all();
         $warehouses = Warehouse::all();
-        $items = Item::all();
+        $categories = Category::all();
+        $items      = Item::with('category')->where('status', 'active')->get();
 
-        return view('admin.donations.create', compact('donors', 'warehouses', 'items'));
+        // 'donations.create' အစား admin folder ထည့်ပေးပါ
+        return view('admin.donations.create', compact('warehouses', 'categories', 'items'));
     }
 
     /**
-     * Store a newly created donation in storage.
+     * Store new donation from form.
      */
     public function store(Request $request)
     {
         $request->validate([
-            'donor_id'     => 'required|exists:donors,id',
-            'warehouse_id' => 'required|exists:warehouses,id',
-            'donation_date'=> 'required|date',
-            'status'       => 'required|in:Pending,Received,Cancelled',
-            'items'        => 'required|array|min:1',
-            'items.*.item_id'  => 'required|exists:items,id',
-            'items.*.quantity' => 'required|numeric|min:1',
+            'donor_name'    => 'required|string|max:255',
+            'phone'         => 'required|string|max:50',
+            'email'         => 'nullable|email',
+            'warehouse_id'  => 'required|exists:warehouses,id',
+            'donation_type' => 'required|in:Cash,Item,Both',
+            'donation_date' => 'nullable|date',
+
+            // Payment Validation
+            'payment_method'        => 'required_if:donation_type,Cash,Both',
+            'amount'                => 'required_if:donation_type,Cash,Both|nullable|numeric|min:1',
+            'transaction_reference' => 'nullable|string',
+            'proof'                 => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+
+            // Item Array Validation
+            'items'                 => 'required_unless:donation_type,Cash|array',
+            'items.*.category_id'   => 'required_unless:donation_type,Cash|nullable|exists:categories,id',
+            'items.*.item_id'       => 'nullable|required_without:items.*.new_item_name',
+            'items.*.new_item_name' => 'nullable|string|max:255',
+            'items.*.quantity'      => 'required_unless:donation_type,Cash|nullable|integer|min:1',
+            'items.*.unit'          => 'required_unless:donation_type,Cash',
+            'items.*.expired_date'  => 'nullable|date',
         ]);
 
         try {
             DB::transaction(function () use ($request) {
-                // 1. Save Donation Record
+                // 1. First or create Donor
+                $donor = Donor::firstOrCreate(
+                    ['phone' => $request->phone],
+                    [
+                        'name'  => $request->donor_name,
+                        'email' => $request->email,
+                    ]
+                );
+
+                // 2. Create Donation Record
                 $donation = Donation::create([
-                    'donor_id'      => $request->donor_id,
+                    'donor_id'      => $donor->id,
                     'warehouse_id'  => $request->warehouse_id,
-                    'donation_date' => $request->donation_date,
-                    'status'        => 'Pending', // Default status Pending
+                    'donation_type' => $request->donation_type,
+                    'donation_date' => $request->donation_date ?? now(),
+                    'status'        => 'Pending',
                     'note'          => $request->note,
                 ]);
 
-                // 2. Save Donation Items
-                foreach ($request->items as $itemData) {
-                    DonationItem::create([
-                        'donation_id' => $donation->id,
-                        'item_id'     => $itemData['item_id'],
-                        'quantity'    => $itemData['quantity'],
+                // 3. Save Cash Payment Record (if Cash or Both)
+                if (in_array($request->donation_type, ['Cash', 'Both'])) {
+                    $proofPath = null;
+                    if ($request->hasFile('proof')) {
+                        $proofPath = $request->file('proof')->store('donations/proofs', 'public');
+                    }
+
+                    DonationPayment::create([
+                        'donation_id'           => $donation->id,
+                        'payment_method'        => $request->payment_method,
+                        'transaction_reference' => $request->transaction_reference,
+                        'payment_date'          => now(),
+                        'amount'                => $request->amount,
+                        'currency'              => 'MMK',
+                        'proof'                 => $proofPath,
+                        'status'                => 'Pending',
+                        'note'                  => $request->note,
                     ]);
+                }
+
+                // 4. Save Items (if Item or Both)
+                if (in_array($request->donation_type, ['Item', 'Both']) && $request->has('items')) {
+                    $expirableKeywords = ['food', 'water', 'medical', 'hygiene', 'ရိက္ခာ', 'ဆေးဝါး', 'သောက်ရေသန့်'];
+
+                    foreach ($request->items as $itemData) {
+                        $itemId     = $itemData['item_id'] ?? null;
+                        $categoryId = $itemData['category_id'] ?? null;
+
+                        if (!$itemId && !empty($itemData['new_item_name'])) {
+                            $newItem = Item::create([
+                                'name'        => $itemData['new_item_name'],
+                                'category_id' => $categoryId,
+                                'unit'        => $itemData['unit'],
+                                'status'      => 'active',
+                            ]);
+                            $itemId = $newItem->id;
+                        }
+
+                        $category     = Category::find($categoryId);
+                        $categoryName = $category ? strtolower($category->name) : '';
+
+                        $isExpirable = false;
+                        foreach ($expirableKeywords as $keyword) {
+                            if (str_contains($categoryName, strtolower($keyword))) {
+                                $isExpirable = true;
+                                break;
+                            }
+                        }
+
+                        $expiredDate = $isExpirable ? ($itemData['expired_date'] ?? null) : null;
+
+                        if ($itemId) {
+                            DonationItem::create([
+                                'donation_id'  => $donation->id,
+                                'item_id'      => $itemId,
+                                'quantity'     => $itemData['quantity'],
+                                'unit'         => $itemData['unit'],
+                                'expired_date' => $expiredDate,
+                            ]);
+                        }
+                    }
                 }
             });
 
             return redirect()->route('backend.donations.index')
-                ->with('success', 'Donation request created successfully!');
+                ->with('success', 'လှူဒါန်းမှု သတင်းအချက်အလက် ပေးပို့မှု အောင်မြင်ပါသည်။ ကျေးဇူးတင်ရှိပါသည်။');
 
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Failed to create donation: ' . $e->getMessage());
+                ->with('error', 'အမှားအယွင်းတစ်ခု ရှိနေပါသည်: ' . $e->getMessage());
         }
     }
-
     /**
-     * Display the specified donation.
+     * Mark donation as received and update stock/warehouse if needed.
      */
-    public function show($id)
-    {
-        $donation = Donation::with(['donor', 'warehouse', 'donationItems.item'])->findOrFail($id);
-
-        return view('admin.donations.show', compact('donation'));
-    }
-
     /**
-     * Show the form for editing the specified donation.
-     */
-    public function edit($id)
-    {
-        $donation = Donation::with('donationItems')->findOrFail($id);
-        $donors = Donor::all();
-        $warehouses = Warehouse::all();
-        $items = Item::all();
-
-        return view('admin.donations.edit', compact('donation', 'donors', 'warehouses', 'items'));
-    }
-
-    /**
-     * Update the specified donation in storage.
-     */
-    public function update(Request $request, $id)
-    {
-        $donation = Donation::findOrFail($id);
-
-        if ($donation->status === 'Received') {
-            return redirect()->back()->with('error', 'Cannot edit a received donation.');
-        }
-
-        $request->validate([
-            'donor_id'     => 'required|exists:donors,id',
-            'warehouse_id' => 'required|exists:warehouses,id',
-            'donation_date'=> 'required|date',
-            'note'          => 'nullable|string',
-        ]);
-
-        $donation->update([
-            'donor_id'      => $request->donor_id,
-            'warehouse_id'  => $request->warehouse_id,
-            'donation_date' => $request->donation_date,
-            'note'          => $request->note,
-        ]);
-
-        return redirect()->route('backend.donations.index')
-            ->with('success', 'Donation updated successfully!');
-    }
-
-    /**
-     * Remove the specified donation from storage.
-     */
-    public function destroy($id)
-    {
-        $donation = Donation::findOrFail($id);
-
-        if ($donation->status === 'Received') {
-            return redirect()->back()->with('error', 'Cannot delete a received donation.');
-        }
-
-        $donation->delete();
-
-        return redirect()->route('backend.donations.index')
-            ->with('success', 'Donation deleted successfully!');
-    }
-
-    /**
-     * Receive Donation Action (Increase Inventory Stock & Log Stock Movement)
+     * Mark donation as received and update stock/warehouse if needed.
      */
     public function receive($id)
-    {
-        $donation = Donation::with('donationItems')->findOrFail($id);
+{
+    try {
+        DB::transaction(function () use ($id) {
+            $donation = Donation::with(['donationItems', 'payment'])->findOrFail($id);
 
-        if ($donation->status === 'Received') {
-            return redirect()->back()->with('error', 'Donation is already received.');
-        }
+            // 1. Update Donation Status to Received
+            $donation->update([
+                'status' => 'Received'
+            ]);
 
-        if ($donation->donationItems->isEmpty()) {
-            return redirect()->back()->with('error', 'Cannot receive donation without any items.');
-        }
+            // 2. Update Payment Status if exists (ငွေသားပါရှိလျှင် Completed သို့ပြောင်းရန်)
+            if ($donation->payment) {
+                $donation->payment->update([
+                    'status' => 'Completed'
+                ]);
+            }
 
-        try {
-            DB::transaction(function () use ($donation) {
-                // A. Status ပြောင်းလဲခြင်း
-                $donation->update(['status' => 'Received']);
+            // 3. Update Inventory Stock (ပစ္စည်းများပါရှိလျှင် inventories table ထို့ ပမာဏနှင့် သက်တမ်းကုန်ရက် ထည့်ရန်)
+            if (in_array($donation->donation_type, ['Item', 'Both']) && $donation->donationItems->count()) {
+                foreach ($donation->donationItems as $donationItem) {
 
-                // B. Inventory Stock (+) တိုးပေးခြင်းနှင့် Stock Movement မှတ်ခြင်း
-                foreach ($donation->donationItems as $dItem) {
-
-                    // 1. Inventory Stock ရှာမည်/ မရှိပါက အသစ်တည်ဆောက်မည်
-                    $inventory = Inventory::firstOrCreate(
+                    // ပစ္စည်းတစ်ခုချင်းစီအတွက် inventories table ထဲတွင် စာရင်းထည့်ခြင်း (သို့) ပမာဏပေါင်းထည့်ခြင်း
+                    // အကယ်၍ အတူတူပင်ဖြစ်ပြီး သက်တမ်းကုန်ရက် (expiry_date) တူပါက ပမာဏပေါင်းထည့်ရန် updateOrInsert ကိုသုံးနိုင်ပါသည်
+                    \App\Models\Inventory::updateOrInsert(
                         [
                             'warehouse_id' => $donation->warehouse_id,
-                            'item_id'      => $dItem->item_id,
+                            'item_id'      => $donationItem->item_id,
+                            'expiry_date'  => $donationItem->expired_date, // သက်တမ်းကုန်ရက်အလိုက် ခွဲခြားသိမ်းဆည်းရန်
                         ],
                         [
-                            'quantity' => 0,
+                            'quantity'     => DB::raw('COALESCE(quantity, 0) + ' . $donationItem->quantity),
+                            'updated_at'   => now(),
+                            'created_at'   => now(),
                         ]
                     );
-
-                    // 2. Stock Quantity ပေါင်းပေးခြင်း (Stock +)
-                    $inventory->increment('quantity', $dItem->quantity);
-
-                    // 3. Stock Movement History မှတ်တမ်းတင်ခြင်း (Model Structure နှင့် ကိုက်ညီအောင် ပြင်ဆင်ထားပါသည်)
-                    StockMovement::create([
-                        'warehouse_id'  => $donation->warehouse_id,
-                        'item_id'       => $dItem->item_id,
-                        'type'          => 'in',
-                        'quantity'      => $dItem->quantity,
-                        'balance_after' => $inventory->quantity, // increment လုပ်ပြီးနောက် ကျန်ရှိသော လက်ကျန်စတော့
-                        'reference'     => 'DONATION-' . $donation->id,
-                        'note'          => 'Donation received (ID: ' . $donation->id . ')',
-                        'created_by'    => auth()->id() ?? 1, // Login ဝင်ထားသူ ID (သို့မဟုတ် Default 1)
-                    ]);
                 }
-            });
+            }
+        });
 
-            return redirect()->back()->with('success', 'Donation received successfully and inventory stock updated!');
+        return redirect()->back()
+            ->with('success', 'လှူဒါန်းမှုကို လက်ခံအတည်ပြုပြီး Inventory Stock နှင့် ငွေစာရင်းများကို အောင်မြင်စွာ အပ်ဒိတ်လုပ်ပြီးပါပြီ။');
 
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to receive donation: ' . $e->getMessage());
-        }
+    } catch (\Exception $e) {
+        return redirect()->back()
+            ->with('error', 'အမှားအယွင်း ဖြစ်ပေါ်သွားပါသည်: ' . $e->getMessage());
     }
+}
 }

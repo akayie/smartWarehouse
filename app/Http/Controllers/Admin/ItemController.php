@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\DB;
 
 class ItemController extends Controller
 {
+    /**
+     * Display a listing of items with search & category filter.
+     */
     public function index(Request $request)
     {
         $query = Item::with(['category', 'inventories']);
@@ -37,6 +40,9 @@ class ItemController extends Controller
         return view('admin.items.index', compact('items', 'categories'));
     }
 
+    /**
+     * Show the form for creating a new item.
+     */
     public function create()
     {
         $categories = Category::orderBy('name')->get();
@@ -44,13 +50,16 @@ class ItemController extends Controller
         return view('admin.items.create', compact('categories'));
     }
 
+    /**
+     * Store a newly created item in storage with initial inventory batch.
+     */
     public function store(ItemRequest $request)
     {
         DB::transaction(function () use ($request) {
-            // ၁။ Item Record သစ် ဆောက်ပါမည်
+            // 1. Create New Item Record
             $item = Item::create($request->validated());
 
-            // ၂။ Default Warehouse တစ်ခုရှိပါက Inventory Initial Batch Record ပါ တပါတည်း ထည့်ပေးမည်
+            // 2. Create Initial Inventory Record for Default Warehouse if available
             $defaultWarehouse = Warehouse::first();
 
             if ($defaultWarehouse) {
@@ -68,6 +77,9 @@ class ItemController extends Controller
             ->with('success', 'Item and initial inventory batch created successfully.');
     }
 
+    /**
+     * Display the specified item details.
+     */
     public function show(string $id)
     {
         $item = Item::with(['category', 'inventories.warehouse'])->findOrFail($id);
@@ -75,6 +87,9 @@ class ItemController extends Controller
         return view('admin.items.show', compact('item'));
     }
 
+    /**
+     * Show the form for editing the specified item.
+     */
     public function edit(string $id)
     {
         $item = Item::with('inventories')->findOrFail($id);
@@ -83,17 +98,23 @@ class ItemController extends Controller
         return view('admin.items.edit', compact('item', 'categories'));
     }
 
+    /**
+     * Update the specified item in storage.
+     */
     public function update(ItemRequest $request, string $id)
     {
         DB::transaction(function () use ($request, $id) {
             $item = Item::findOrFail($id);
             $item->update($request->validated());
 
-            // Expiry Date ပြင်ဆင်ပါက အဆိုပါ Item ၏ လက်ရှိ Inventory Record ပါ တပါတည်း Update လုပ်ပေးပါမည်
-            if ($request->has('expiry_date')) {
-                Inventory::where('item_id', $item->id)->update([
-                    'expiry_date' => $request->input('expiry_date'),
-                ]);
+            // Update initial batch expiry date if provided
+            if ($request->filled('expiry_date')) {
+                Inventory::where('item_id', $item->id)
+                    ->orderBy('id', 'asc')
+                    ->limit(1)
+                    ->update([
+                        'expiry_date' => $request->input('expiry_date'),
+                    ]);
             }
         });
 
@@ -102,6 +123,9 @@ class ItemController extends Controller
             ->with('success', 'Item updated successfully.');
     }
 
+    /**
+     * Remove the specified item from storage.
+     */
     public function destroy(string $id)
     {
         $item = Item::findOrFail($id);
@@ -112,15 +136,21 @@ class ItemController extends Controller
             ->with('success', 'Item deleted successfully.');
     }
 
+    /**
+     * Get item details by Barcode or ID for AJAX / Barcode Scanner operations.
+     * Route Name: backend.items.getByBarcode
+     */
     public function getByBarcode(string $barcode)
     {
-        $item = Item::where('barcode', $barcode)->first();
+        $item = Item::where('barcode', $barcode)
+            ->orWhere('id', $barcode)
+            ->first();
 
         if ($item) {
             return response()->json([
                 'success' => true,
-                'data'    => $item
-            ]);
+                'item'    => $item // Fixed response key to match scan.blade.php
+            ], 200);
         }
 
         return response()->json([

@@ -36,15 +36,15 @@
                         <th>တောင်းဆိုသူ</th>
                         <th>ဘေးအန္တရာယ် ဖြစ်စဉ်</th>
                         <th class="text-center" style="width: 140px;">အခြေအနေ</th>
-                        <th class="text-center" style="width: 180px;">ဆောင်ရွက်ချက်</th>
+                        <th class="text-center" style="width: 220px;">ဆောင်ရွက်ချက်</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($reliefRequests as $request)
                         <tr>
                             <td class="text-center fw-bold">{{ $loop->iteration }}</td>
-                            <td class="fw-bold">{{ $request->requestedBy->name ?? $request->user->name ?? 'မရှိပါ' }}</td>
-                            <td>{{ $request->disaster->title ?? $request->disaster->name ?? 'အထွေထွေ ထောက်ပံ့မှု' }}</td>
+                            <td class="fw-bold">{{ $request->requestedBy->name ?? $request->user->name ?? 'အများပြည်သူ' }}</td>
+                            <td>{{ $request->disaster->name ?? $request->disaster->title ?? 'အထွေထွေ ထောက်ပံ့မှု' }}</td>
                             <td class="text-center">
                                 @php
                                     $status = strtolower($request->status ?? '');
@@ -61,16 +61,26 @@
                                 @endif
                             </td>
                             <td class="text-center">
-                                <a href="{{ route('backend.relief_requests.show', $request->id) }}" class="btn btn-sm btn-info text-white me-1">
+                                <a href="{{ route('backend.relief_requests.show', $request->id) }}" class="btn btn-sm btn-info text-white me-1" title="ကြည့်မည်">
                                     <i class="fas fa-eye me-1"></i> ကြည့်မည်
                                 </a>
 
                                 @if(strtolower($request->status) === 'pending')
+                                    {{-- Approve Button --}}
                                     <form action="{{ route('backend.relief_requests.approve', $request->id) }}" method="POST" class="d-inline" onsubmit="return confirm('ဤတောင်းဆိုချက်အား ခွင့်ပြုရန် သေချာပါသလား။')">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-check me-1"></i> ခွင့်ပြုမည်
+                                        <button type="submit" class="btn btn-sm btn-success me-1" title="ခွင့်ပြုမည်">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </form>
+
+                                    {{-- Reject Button --}}
+                                    <form action="{{ route('backend.relief_requests.reject', $request->id) }}" method="POST" class="d-inline" onsubmit="return confirm('ဤတောင်းဆိုချက်အား ငြင်းပယ်ရန် သေချာပါသလား။')">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="btn btn-sm btn-danger" title="ငြင်းပယ်မည်">
+                                            <i class="fas fa-times"></i>
                                         </button>
                                     </form>
                                 @endif

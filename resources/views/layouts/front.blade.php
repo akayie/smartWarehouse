@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Smart Relief - ပြည်သူ့ပေါ်တယ်')</title>
+    <title>@yield('title', 'Smart Relief ')</title>
 
     <!-- FontAwesome 6 Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -21,10 +21,10 @@
     <!-- DEMO NAVIGATION BAR SWITCHER -->
     <div class="panel-switcher">
         <span>
-            <strong>Smart သဘာဝဘေး ကူညီကယ်ဆယ်ရေးစနစ်</strong> — ပြည်သူ့ပေါ်တယ်
+            <strong>Smart သဘာဝဘေး ကူညီကယ်ဆယ်ရေးစနစ်</strong>
         </span>
         <div class="switcher-btns">
-            <button class="active" onclick="window.location.href='{{ route('home') }}'">🌐 ပြည်သူ့ပေါ်တယ် / အသုံးပြုသူ စာမျက်နှာ</button>
+            <button class="active" onclick="window.location.href='{{ route('home') }}'">🌐 Public / အသုံးပြုသူ စာမျက်နှာ</button>
 
             @auth
                 @if(Auth::user()->role === 'admin')

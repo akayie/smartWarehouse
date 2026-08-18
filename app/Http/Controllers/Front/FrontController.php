@@ -3,47 +3,35 @@
 namespace App\Http\Controllers\Front;
 
 use App\Http\Controllers\Controller;
-use App\Models\Inventory;
+use App\Http\Requests\StoreDonationRequest;
+use App\Http\Requests\StoreReliefRequest;
+use App\Models\Category;
 use App\Models\Disaster;
-use App\Models\Distribution;
 use App\Models\Donation;
 use App\Models\DonationItem;
 use App\Models\DonationPayment;
 use App\Models\Donor;
+use App\Models\Inventory;
 use App\Models\Item;
 use App\Models\ReliefRequest;
+use App\Models\RequestItem;
 use App\Models\Warehouse;
-use Illuminate\Http\Request;
+use Exception;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class FrontController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | HOME & ABOUT
+    |--------------------------------------------------------------------------
+    */
+
     public function index()
     {
-        // 1. Total Items Stocked
-        $totalItems = Inventory::sum('quantity');
-
-        // 2. Active Warehouses Count (ဖြည့်စွက်ထားပါသည်)
-        $totalWarehouses = Warehouse::count();
-
-        // 3. Active Disaster Zones Count
-        $activeDisastersCount = Disaster::where('status', 'Active')->count();
-
-        // 4. Families Helped Count (Approved သို့မဟုတ် Completed ဖြစ်ပြီးသား Relief Requests များ)
-        $familiesHelped = ReliefRequest::whereIn('status', ['Approved', 'Completed', 'Distributed'])->count();
-
-        // 5. Active Disasters & Distributions Lists
-        $activeDisasters = Disaster::where('status', 'Active')->latest()->take(3)->get();
-        $recentDistributions = Distribution::with('warehouse')->latest()->take(5)->get();
-
-        return view('front.home', compact(
-            'totalItems',
-            'totalWarehouses',
-            'activeDisastersCount',
-            'familiesHelped',
-            'activeDisasters',
-            'recentDistributions'
-        ));
+        return view('front.home');
     }
 
     public function about()
@@ -51,168 +39,269 @@ class FrontController extends Controller
         return view('front.about');
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | CAMPAIGNS / DISASTERS
+    |--------------------------------------------------------------------------
+    */
+
     public function campaigns()
     {
-        $campaigns = Disaster::latest()->paginate(9);
+        $campaigns = Disaster::where('status', 'Active')
+            ->latest()
+            ->paginate(6);
+
         return view('front.campaigns', compact('campaigns'));
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | MY RELIEF REQUESTS
+    |--------------------------------------------------------------------------
+    */
+
     public function myRequests()
     {
-        $userId = auth()->id() ?? 1;
-
-        $requests = ReliefRequest::with(['disaster', 'requestItems.item'])
-            ->where('requested_by', $userId)
+        $requests = ReliefRequest::with([
+            'disaster',
+            'warehouse',
+            'requestItems.item',
+        ])
+            ->where('requested_by', Auth::id())
             ->latest()
             ->paginate(10);
 
         return view('front.my-requests', compact('requests'));
     }
 
-    public function donationHistory()
-    {
-        $donations = Donation::with(['payment', 'items.item', 'warehouse'])
-            ->when(auth()->check(), function($query) {
-                $user = auth()->user();
-                $query->whereHas('donor', function($q) use ($user) {
-                    $q->where('email', $user->email)
-                      ->orWhere('phone', $user->phone);
-                });
-            })
-            ->latest()
-            ->paginate(10);
+    /*
+    |--------------------------------------------------------------------------
+    | CREATE RELIEF REQUEST PAGE
+    |--------------------------------------------------------------------------
+    */
 
-        return view('front.donation-history', compact('donations'));
-    }
-
-    // Request Form Pages
     public function createRequest()
     {
-        $disasters = Disaster::where('status', 'Active')->get();
-        return view('front.request', compact('disasters'));
+        $disasters = Disaster::where('status', 'Active')
+            ->latest()
+            ->get();
+
+        $warehouses = Warehouse::orderBy('name')->get();
+
+        return view('front.request_relief', compact('disasters', 'warehouses'));
     }
 
-    public function storeRequest(Request $request)
+    /*
+    |--------------------------------------------------------------------------
+    | GET WAREHOUSE ITEMS - AJAX
+    |--------------------------------------------------------------------------
+    */
+
+    public function getWarehouseItems($warehouseId)
     {
-        $request->validate([
-            'disaster_id' => 'required|exists:disasters,id',
-            'location'    => 'required|string|max:255',
-            'note'        => 'nullable|string',
-        ]);
+        $inventories = Inventory::with(['item:id,name,unit'])
+            ->where('warehouse_id', $warehouseId)
+            ->where('quantity', '>', 0)
+            ->get();
 
-        ReliefRequest::create([
-            'disaster_id'  => $request->disaster_id,
-            'requested_by' => auth()->id() ?? 1,
-            'location'     => $request->location,
-            'request_date' => now(),
-            'status'       => 'Pending',
-            'note'         => $request->note,
-        ]);
-
-        return redirect()->back()->with('success', 'Aid request submitted successfully!');
+        return response()->json($inventories);
     }
 
-    // Donation Form Pages
-    public function createDonation()
+    /*
+    |--------------------------------------------------------------------------
+    | STORE RELIEF REQUEST
+    |--------------------------------------------------------------------------
+    */
+
+    public function storeRequest(StoreReliefRequest $request)
     {
-        $items = Item::orderBy('name', 'asc')->get();
-        return view('front.donate', compact('items'));
-    }
+        $validated = $request->validated();
 
-    public function storeDonation(Request $request)
-    {
-        $request->validate([
-            'donor_name'    => 'required|string|max:255',
-            'phone'         => 'required|string|max:50',
-            'email'         => 'nullable|email',
-            'donation_type' => 'required|in:Cash,Food,Water,Clothing,Medical,Shelter,Hygiene,Rescue Equipment,Other',
+        DB::beginTransaction();
 
-            // Cash Validations
-            'amount'        => 'required_if:donation_type,Cash|nullable|numeric|min:1',
-            'proof'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        try {
+            if ($validated['disaster_option'] === 'new') {
+                $disaster = Disaster::create([
+                    'name'       => $validated['new_disaster_name'],
+                    'type'       => $validated['new_disaster_type'],
+                    'start_date' => $validated['start_date'],
+                    'end_date'   => $validated['end_date'] ?? null,
+                    'location'   => $validated['location'],
+                    'status'     => 'Active',
+                ]);
+                $disasterId = $disaster->id;
+            } else {
+                $disasterId = $validated['disaster_id'];
+            }
 
-            // Item Validations
-            'quantity'      => 'required_unless:donation_type,Cash|nullable|integer|min:1',
-        ]);
-
-        DB::transaction(function () use ($request) {
-            // ၁။ Donor ဖန်တီးခြင်း / ရှာဖွေခြင်း
-            $donor = Donor::firstOrCreate(
-                ['phone' => $request->phone],
-                ['name' => $request->donor_name, 'email' => $request->email]
-            );
-
-            // Default Warehouse ID
-            $defaultWarehouse = Warehouse::first();
-            $warehouseId = $defaultWarehouse ? $defaultWarehouse->id : 1;
-
-            // ၂။ Master Donation Record
-            $donation = Donation::create([
-                'donor_id'      => $donor->id,
-                'warehouse_id'  => $warehouseId,
-                'donation_type' => $request->donation_type,
-                'donation_date' => now(),
-                'status'        => 'Pending',
-                'note'          => $request->note,
+            $reliefRequest = ReliefRequest::create([
+                'disaster_id'  => $disasterId,
+                'warehouse_id' => $validated['warehouse_id'],
+                'requested_by' => Auth::id(),
+                'location'     => $validated['location'],
+                'latitude'     => $validated['latitude'] ?? null,
+                'longitude'    => $validated['longitude'] ?? null,
+                'request_date' => now(),
+                'status'       => 'Pending',
+                'note'         => $validated['note'] ?? null,
             ]);
 
-            // ၃။ Cash Donation
-            if ($request->donation_type === 'Cash') {
+            foreach ($validated['items'] as $itemData) {
+                RequestItem::create([
+                    'request_id' => $reliefRequest->id,
+                    'item_id'    => $itemData['item_id'],
+                    'quantity'   => $itemData['quantity'],
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()
+                ->route('public.my-requests')
+                ->with('success', 'ကယ်ဆယ်ရေးအကူအညီတောင်းခံလွှာ ပေးပို့မှု အောင်မြင်ပါသည်။');
+
+        } catch (Exception $e) {
+            DB::rollBack();
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'အမှားအယွင်း ဖြစ်ပေါ်နေပါသည်: ' . $e->getMessage());
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | CREATE DONATION PAGE
+    |--------------------------------------------------------------------------
+    */
+
+    public function createDonation()
+    {
+        $categories = Category::orderBy('name')->get();
+        $items      = Item::where('status', 'Active')->orderBy('name')->get();
+        $warehouses = Warehouse::orderBy('name')->get();
+
+        return view('front.donate', compact('categories', 'items', 'warehouses'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | STORE DONATION
+    |--------------------------------------------------------------------------
+    */
+
+    public function storeDonation(StoreDonationRequest $request)
+    {
+        $validated = $request->validated();
+
+        DB::beginTransaction();
+
+        try {
+            $user = Auth::user();
+
+            if (!$user) {
+                throw new Exception('အသုံးပြုသူအကောင့်သို့ Login ဝင်ထားရန် လိုအပ်ပါသည်။');
+            }
+
+            // Find or Create Donor
+            $donor = Donor::firstOrCreate(
+                ['email' => $user->email],
+                [
+                    'name'  => $user->name,
+                    'phone' => $user->phone ?? null,
+                ]
+            );
+
+            // Create Donation
+            $donation = Donation::create([
+                'donor_id'      => $donor->id,
+                'warehouse_id'  => $validated['warehouse_id'],
+                'donation_type' => $validated['donation_type'],
+                'donation_date' => $validated['donation_date'],
+                'status'        => 'Pending',
+                'note'          => $validated['note'] ?? null,
+            ]);
+
+            // Save Cash Payment Details (if Cash or Both)
+            if (in_array($validated['donation_type'], ['Cash', 'Both'])) {
                 $proofPath = null;
                 if ($request->hasFile('proof')) {
-                    $proofPath = $request->file('proof')->store('payments', 'public');
+                    $proofPath = $request->file('proof')->store('donation-proofs', 'public');
                 }
 
                 DonationPayment::create([
                     'donation_id'           => $donation->id,
-                    'payment_method'        => $request->payment_method ?? 'Cash In Hand',
-                    'transaction_reference' => $request->transaction_reference,
-                    'payment_date'          => now(),
-                    'amount'                => $request->amount,
+                    'payment_method'        => $validated['payment_method'] ?? null,
+                    'transaction_reference' => $validated['transaction_reference'] ?? null,
+                    'payment_date'          => $validated['donation_date'],
+                    'account_name'          => $validated['account_name'] ?? null,
+                    'account_number'        => $validated['account_number'] ?? null,
+                    'amount'                => $validated['amount'] ?? 0,
                     'currency'              => 'MMK',
                     'proof'                 => $proofPath,
-                    'status'                => 'Completed',
-                    'note'                  => $request->note,
+                    'status'                => 'Pending',
+                    'note'                  => $validated['note'] ?? null,
                 ]);
             }
-            // ၄။ Item Donation
-            else {
-                $itemId = $request->item_id;
 
-                if (!$itemId && $request->filled('new_item_name')) {
-                    $item = Item::firstOrCreate(
-                        ['name' => trim($request->new_item_name)],
-                        [
-                            'unit'          => $request->unit ?? 'Pcs',
-                            'status'        => 'Active',
-                            'minimum_stock' => 0,
-                        ]
-                    );
-                    $itemId = $item->id;
-                }
+            // Save Item Details (if Item or Both)
+            if (in_array($validated['donation_type'], ['Item', 'Both'])) {
+                if (!empty($validated['items'])) {
+                    foreach ($validated['items'] as $itemData) {
+                        if (empty($itemData['item_id']) || empty($itemData['quantity'])) {
+                            continue;
+                        }
 
-                if ($itemId) {
-                    DonationItem::create([
-                        'donation_id' => $donation->id,
-                        'item_id'     => $itemId,
-                        'quantity'    => $request->quantity,
-                    ]);
-
-                    $inventory = Inventory::firstOrCreate(
-                        [
-                            'warehouse_id' => $warehouseId,
-                            'item_id'      => $itemId,
-                        ],
-                        [
-                            'quantity'     => 0,
-                        ]
-                    );
-
-                    $inventory->increment('quantity', $request->quantity);
+                        DonationItem::create([
+                            'donation_id' => $donation->id,
+                            'item_id'     => $itemData['item_id'],
+                            'quantity'    => $itemData['quantity'],
+                            'unit'        => $itemData['unit'] ?? null,
+                        ]);
+                    }
                 }
             }
-        });
 
-        return redirect()->back()->with('success', 'Thank you! Your donation has been recorded and stock updated.');
+            DB::commit();
+
+            return redirect()
+                ->route('public.don-history')
+                ->with('success', 'လှူဒါန်းမှု အောင်မြင်စွာ တင်သွင်းပြီးပါပြီ။');
+
+        } catch (Exception $e) {
+            DB::rollBack();
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'လှူဒါန်းမှု မအောင်မြင်ပါ။ ' . $e->getMessage());
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | DONATION HISTORY
+    |--------------------------------------------------------------------------
+    */
+
+    public function donationHistory()
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $donor = Donor::where('email', $user->email)->first();
+
+        $donations = $donor
+            ? Donation::with(['donor', 'warehouse', 'donationItems.item', 'payment'])
+                ->where('donor_id', $donor->id)
+                ->latest()
+                ->paginate(10)
+            : new LengthAwarePaginator([], 0, 10);
+
+        return view('front.donation-history', compact('donations'));
     }
 }

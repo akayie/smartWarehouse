@@ -6,17 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Warehouse;
 
 class User extends Authenticatable
 {
     use HasFactory, Notifiable, SoftDeletes;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'phone',
@@ -24,23 +18,14 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'warehouse_id',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -50,29 +35,31 @@ class User extends Authenticatable
     }
 
     /**
-     * User has many warehouses.
+     * Warehouse Manager belongs to one Warehouse.
      */
-    public function warehouses()
+    public function warehouse()
     {
-        return $this->hasMany(Warehouse::class, 'user_id');
+        return $this->belongsTo(Warehouse::class, 'warehouse_id');
     }
+
     public function stockMovements()
     {
         return $this->hasMany(StockMovement::class, 'created_by');
     }
 
     public function reliefRequests()
-{
-    return $this->hasMany(
-        ReliefRequest::class,
-        'requested_by'
-    );
-}
-public function distributions()
-{
-    return $this->hasMany(
-        Distribution::class,
-        'handled_by'
-    );
-}
+    {
+        return $this->hasMany(
+            ReliefRequest::class,
+            'requested_by'
+        );
+    }
+
+    public function distributions()
+    {
+        return $this->hasMany(
+            Distribution::class,
+            'handled_by'
+        );
+    }
 }

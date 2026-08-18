@@ -5,10 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-
+use App\Traits\BelongsToWarehouse;
 class Distribution extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes,BelongsToWarehouse;
 
     protected $fillable = [
         'request_id',
@@ -26,12 +26,20 @@ class Distribution extends Model
     /**
      * Distribution belongs to a Relief Request.
      */
-    public function reliefRequest()
+    public function request()
     {
         return $this->belongsTo(
             ReliefRequest::class,
             'request_id'
         );
+    }
+
+    /**
+     * Alias method for backward compatibility
+     */
+    public function reliefRequest()
+    {
+        return $this->request();
     }
 
     /**

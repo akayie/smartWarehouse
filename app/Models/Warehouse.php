@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Inventory;
 
 class Warehouse extends Model
 {
@@ -15,37 +14,42 @@ class Warehouse extends Model
         'name',
         'location',
         'phone',
-        'user_id',
         'status',
     ];
 
     /**
-     * Warehouse belongs to a User.
+     * Warehouse has many users/managers/staff.
      */
-    public function user()
+    public function users()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->hasMany(User::class, 'warehouse_id');
     }
 
-     /**
+    /**
      * Warehouse has many inventory records.
      */
     public function inventories()
     {
         return $this->hasMany(Inventory::class);
     }
+
     public function stockMovements()
     {
         return $this->hasMany(StockMovement::class);
     }
+
     public function donations()
-{
-    return $this->hasMany(Donation::class);
-}
-public function distributions()
-{
-    return $this->hasMany(
-        Distribution::class
-    );
-}
+    {
+        return $this->hasMany(Donation::class);
+    }
+
+    public function distributions()
+    {
+        return $this->hasMany(Distribution::class);
+    }
+
+    public function reliefRequests()
+    {
+        return $this->hasMany(ReliefRequest::class);
+    }
 }

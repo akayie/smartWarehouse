@@ -14,29 +14,22 @@ class DonationItem extends Model
         'donation_id',
         'item_id',
         'quantity',
+        'unit',
+        'expired_date',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
+        'expired_date' => 'date',
     ];
 
-    /**
-     * DonationItem belongs to Donation.
-     */
     public function donation()
     {
-        return $this->belongsTo(
-            Donation::class
-        );
+        return $this->belongsTo(Donation::class);
     }
 
-    /**
-     * DonationItem belongs to Item.
-     */
     public function item()
     {
-        return $this->belongsTo(
-            Item::class
-        );
+        return $this->belongsTo(Item::class);
     }
 }

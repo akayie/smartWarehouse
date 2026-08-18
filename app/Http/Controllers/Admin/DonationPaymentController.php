@@ -21,10 +21,10 @@ class DonationPaymentController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('transaction_reference', 'like', "%{$search}%")
-                  ->orWhere('account_name', 'like', "%{$search}%")
-                  ->orWhereHas('donation.donor', function ($donorQuery) use ($search) {
-                      $donorQuery->where('name', 'like', "%{$search}%");
-                  });
+                    ->orWhere('account_name', 'like', "%{$search}%")
+                    ->orWhereHas('donation.donor', function ($donorQuery) use ($search) {
+                        $donorQuery->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -47,11 +47,22 @@ class DonationPaymentController extends Controller
             $query->whereDate('payment_date', '<=', $request->to_date);
         }
 
-        // 6. Pagination ပြုလုပ်ပြီး View ထံ ပို့ပါ
+        // 🌟 6. စစ်ထုတ်ထားသော ရလဒ်များအပေါ် မူတည်၍ amount column ဖြင့် စုစုပေါင်း တွက်ချက်ခြင်း
+        // Filter လုပ်ထားသမျှ အားလုံးရဲ့ ငွေပမာဏ စုစုပေါင်း
+        $totalAmount = (clone $query)->sum('amount');
+
+        // Filter လုပ်ထားသမျှ ထဲမှ Status က "Completed" ဖြစ်သော ငွေပမာဏ စုစုပေါင်း
+        $totalCompletedAmount = (clone $query)->where('status', 'Completed')->sum('amount');
+
+        // 7. Pagination ပြုလုပ်ပြီး View ထံ ပို့ပါ
         $donationPayments = $query->latest('id')
             ->paginate(15)
             ->appends($request->all());
 
-        return view('admin.donation_payments.index', compact('donationPayments'));
+        return view('admin.donation_payments.index', compact(
+            'donationPayments',
+            'totalAmount',
+            'totalCompletedAmount'
+        ));
     }
 }

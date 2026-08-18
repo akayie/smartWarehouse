@@ -23,9 +23,10 @@ return new class extends Migration
                 ->restrictOnDelete();
 
             $table->unsignedInteger('quantity');
+            $table->string('unit')->nullable(); // Dropdown/Text Unit (ဥပမာ - ထုပ်၊ ဗူး၊ ဖာ)
+            $table->date('expired_date')->nullable(); // Expired Date (Food, Water, Medical အတွက်)
 
             $table->timestamps();
-
             $table->softDeletes();
 
             /*
@@ -36,6 +37,7 @@ return new class extends Migration
              * Soft deleted records are not considered
              * by this database constraint.
              */
+            $table->unique(['donation_id', 'item_id']);
         });
     }
 

@@ -18,6 +18,7 @@ class ReliefRequestController extends Controller
     {
         $reliefRequests = ReliefRequest::with([
             'disaster',
+            'warehouse',
             'requestedBy',
         ])
             ->latest('id')
@@ -40,6 +41,7 @@ class ReliefRequestController extends Controller
     {
         $reliefRequest = ReliefRequest::with([
             'disaster',
+            'warehouse',
             'requestedBy',
             'requestItems.item',
         ])->findOrFail($id);
@@ -61,40 +63,24 @@ class ReliefRequestController extends Controller
     {
         $reliefRequest = ReliefRequest::findOrFail($id);
 
-        // Already approved
-        if ($reliefRequest->status === 'Approved') {
-
+        if (strtolower($reliefRequest->status) === 'approved') {
             return redirect()
                 ->back()
-                ->with(
-                    'error',
-                    'ဤတောင်းခံမှုကို အတည်ပြုပြီးသားဖြစ်ပါသည်။'
-                );
+                ->with('error', 'ဤတောင်းခံမှုကို အတည်ပြုပြီးသားဖြစ်ပါသည်။');
         }
 
-        // Already rejected
-        if ($reliefRequest->status === 'Rejected') {
-
+        if (strtolower($reliefRequest->status) === 'rejected') {
             return redirect()
                 ->back()
-                ->with(
-                    'error',
-                    'ပယ်ဖျက်ပြီးသား တောင်းခံမှုကို ပြန်လည်အတည်ပြု၍ မရပါ။'
-                );
+                ->with('error', 'ပယ်ဖျက်ပြီးသား တောင်းခံမှုကို ပြန်လည်အတည်ပြု၍ မရပါ။');
         }
 
-        // Only Pending request can be approved
-        if ($reliefRequest->status !== 'Pending') {
-
+        if (strtolower($reliefRequest->status) !== 'pending') {
             return redirect()
                 ->back()
-                ->with(
-                    'error',
-                    'လက်ရှိအခြေအနေမှ အတည်ပြု၍ မရပါ။'
-                );
+                ->with('error', 'လက်ရှိအခြေအနေမှ အတည်ပြု၍ မရပါ။');
         }
 
-        // Update request status
         $reliefRequest->update([
             'status' => 'Approved',
         ]);
@@ -104,10 +90,7 @@ class ReliefRequestController extends Controller
                 'backend.relief_requests.show',
                 $reliefRequest->id
             )
-            ->with(
-                'success',
-                'ကယ်ဆယ်ရေးအကူအညီ တောင်းခံမှုကို အတည်ပြုပြီးပါပြီ။'
-            );
+            ->with('success', 'ကယ်ဆယ်ရေးအကူအညီ တောင်းခံမှုကို အတည်ပြုပြီးပါပြီ။');
     }
 
 
@@ -121,29 +104,18 @@ class ReliefRequestController extends Controller
     {
         $reliefRequest = ReliefRequest::findOrFail($id);
 
-        // Already rejected
-        if ($reliefRequest->status === 'Rejected') {
-
+        if (strtolower($reliefRequest->status) === 'rejected') {
             return redirect()
                 ->back()
-                ->with(
-                    'error',
-                    'ဤတောင်းခံမှုကို ပယ်ဖျက်ပြီးသားဖြစ်ပါသည်။'
-                );
+                ->with('error', 'ဤတောင်းခံမှုကို ပယ်ဖျက်ပြီးသားဖြစ်ပါသည်။');
         }
 
-        // Cannot reject completed request
-        if ($reliefRequest->status === 'Completed') {
-
+        if (strtolower($reliefRequest->status) === 'completed') {
             return redirect()
                 ->back()
-                ->with(
-                    'error',
-                    'ပြီးစီးပြီးသား တောင်းခံမှုကို ပယ်ဖျက်၍ မရပါ။'
-                );
+                ->with('error', 'ပြီးစီးပြီးသား တောင်းခံမှုကို ပယ်ဖျက်၍ မရပါ။');
         }
 
-        // Update status
         $reliefRequest->update([
             'status' => 'Rejected',
         ]);
@@ -153,9 +125,6 @@ class ReliefRequestController extends Controller
                 'backend.relief_requests.show',
                 $reliefRequest->id
             )
-            ->with(
-                'success',
-                'ကယ်ဆယ်ရေးအကူအညီ တောင်းခံမှုကို ပယ်ဖျက်ပြီးပါပြီ။'
-            );
+            ->with('success', 'ကယ်ဆယ်ရေးအကူအညီ တောင်းခံမှုကို ပယ်ဖျက်ပြီးပါပြီ။');
     }
 }
