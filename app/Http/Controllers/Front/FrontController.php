@@ -17,33 +17,30 @@ use App\Models\ReliefRequest;
 use App\Models\RequestItem;
 use App\Models\Warehouse;
 use Exception;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class FrontController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | HOME & ABOUT
-    |--------------------------------------------------------------------------
-    */
-
     public function index()
     {
-        return view('front.home');
+        $totalItems = Inventory::sum('quantity');
+        $totalWarehouses = Warehouse::count();
+        $activeDisastersCount = Disaster::where('status', 'Active')->count();
+        $familiesHelped = ReliefRequest::where('status', 'Approved')->count();
+
+        return view('front.home', compact(
+            'totalItems',
+            'totalWarehouses',
+            'activeDisastersCount',
+            'familiesHelped'
+        ));
     }
 
     public function about()
     {
         return view('front.about');
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | CAMPAIGNS / DISASTERS
-    |--------------------------------------------------------------------------
-    */
 
     public function campaigns()
     {
@@ -54,31 +51,22 @@ class FrontController extends Controller
         return view('front.campaigns', compact('campaigns'));
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | MY RELIEF REQUESTS
-    |--------------------------------------------------------------------------
-    */
-
     public function myRequests()
     {
-        $requests = ReliefRequest::with([
-            'disaster',
-            'warehouse',
-            'requestItems.item',
-        ])
-            ->where('requested_by', Auth::id())
-            ->latest()
+        $requests = ReliefRequest::withoutGlobalScopes()
+            ->with([
+                'disaster',
+                'warehouse',
+                'requestItems.item',
+            ])
+            ->latest('id')
             ->paginate(10);
 
-        return view('front.my-requests', compact('requests'));
+        return view(
+            'front.my-requests',
+            compact('requests')
+        );
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | CREATE RELIEF REQUEST PAGE
-    |--------------------------------------------------------------------------
-    */
 
     public function createRequest()
     {
@@ -91,90 +79,179 @@ class FrontController extends Controller
         return view('front.request_relief', compact('disasters', 'warehouses'));
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | GET WAREHOUSE ITEMS - AJAX
-    |--------------------------------------------------------------------------
-    */
-
     public function getWarehouseItems($warehouseId)
     {
-        $inventories = Inventory::with(['item:id,name,unit'])
+        $inventories = Inventory::with([
+            'item:id,name,unit'
+        ])
             ->where('warehouse_id', $warehouseId)
             ->where('quantity', '>', 0)
-            ->get();
+            ->get([
+                'id',
+                'warehouse_id',
+                'item_id',
+                'quantity',
+            ]);
 
         return response()->json($inventories);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | STORE RELIEF REQUEST
-    |--------------------------------------------------------------------------
-    */
+public function storeRequest(StoreReliefRequest $request)
+{
+    $validated = $request->validated();
 
-    public function storeRequest(StoreReliefRequest $request)
-    {
-        $validated = $request->validated();
+    DB::beginTransaction();
 
-        DB::beginTransaction();
+    try {
 
-        try {
-            if ($validated['disaster_option'] === 'new') {
-                $disaster = Disaster::create([
-                    'name'       => $validated['new_disaster_name'],
-                    'type'       => $validated['new_disaster_type'],
-                    'start_date' => $validated['start_date'],
-                    'end_date'   => $validated['end_date'] ?? null,
-                    'location'   => $validated['location'],
-                    'status'     => 'Active',
-                ]);
-                $disasterId = $disaster->id;
-            } else {
-                $disasterId = $validated['disaster_id'];
-            }
+        /*
+        |--------------------------------------------------------------------------
+        | 1. Disaster
+        |--------------------------------------------------------------------------
+        */
 
-            $reliefRequest = ReliefRequest::create([
-                'disaster_id'  => $disasterId,
-                'warehouse_id' => $validated['warehouse_id'],
-                'requested_by' => Auth::id(),
-                'location'     => $validated['location'],
-                'latitude'     => $validated['latitude'] ?? null,
-                'longitude'    => $validated['longitude'] ?? null,
-                'request_date' => now(),
-                'status'       => 'Pending',
-                'note'         => $validated['note'] ?? null,
+        if ($validated['disaster_option'] === 'new') {
+
+            $disaster = Disaster::create([
+                'name'       => $validated['new_disaster_name'],
+                'type'       => $validated['new_disaster_type'],
+                'start_date' => $validated['start_date'],
+                'end_date'   => $validated['end_date'] ?? null,
+                'location'   => $validated['location'],
+                'status'     => 'Active',
             ]);
 
-            foreach ($validated['items'] as $itemData) {
-                RequestItem::create([
-                    'request_id' => $reliefRequest->id,
-                    'item_id'    => $itemData['item_id'],
-                    'quantity'   => $itemData['quantity'],
-                ]);
+            $disasterId = $disaster->id;
+
+        } else {
+
+            $disasterId = $validated['disaster_id'];
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 2. Medical Proof Upload
+        |--------------------------------------------------------------------------
+        */
+
+        $medicalProofPath = null;
+
+        if (
+            isset($validated['is_health_related']) &&
+            (int) $validated['is_health_related'] === 1
+        ) {
+
+            if ($request->hasFile('medical_proof')) {
+
+                $medicalProofPath = $request
+                    ->file('medical_proof')
+                    ->store('medical_proofs', 'public');
+            }
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 3. Create Relief Request
+        |--------------------------------------------------------------------------
+        */
+
+        $reliefRequest = ReliefRequest::withoutGlobalScopes()->create([
+
+            'disaster_id' => $disasterId,
+
+            'warehouse_id' => $validated['warehouse_id'],
+
+            'requested_by' => Auth::check()
+                ? Auth::id()
+                : null,
+
+            // Requester Information
+            'name' => $validated['name'],
+
+            'phone_number' => $validated['phone_number'],
+
+            // Health / Medical Information
+            'is_health_related' =>
+                (bool) ($validated['is_health_related'] ?? false),
+
+            'medical_proof' => $medicalProofPath,
+
+            // Location Information
+            'location' => $validated['location'],
+
+            'latitude' => $validated['latitude'] ?? null,
+
+            'longitude' => $validated['longitude'] ?? null,
+
+            // Request Information
+            'request_date' => now(),
+
+            'status' => 'Pending',
+
+            'note' => $validated['note'] ?? null,
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 4. Save Requested Items
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($validated['items'] as $itemData) {
+
+            $quantity = (int) ($itemData['quantity'] ?? 0);
+
+            if ($quantity <= 0) {
+                continue;
             }
 
-            DB::commit();
-
-            return redirect()
-                ->route('public.my-requests')
-                ->with('success', 'ကယ်ဆယ်ရေးအကူအညီတောင်းခံလွှာ ပေးပို့မှု အောင်မြင်ပါသည်။');
-
-        } catch (Exception $e) {
-            DB::rollBack();
-
-            return redirect()
-                ->back()
-                ->withInput()
-                ->with('error', 'အမှားအယွင်း ဖြစ်ပေါ်နေပါသည်: ' . $e->getMessage());
+            RequestItem::create([
+                'request_id' => $reliefRequest->id,
+                'item_id' => $itemData['item_id'],
+                'quantity' => $quantity,
+            ]);
         }
-    }
 
-    /*
-    |--------------------------------------------------------------------------
-    | CREATE DONATION PAGE
-    |--------------------------------------------------------------------------
-    */
+
+        /*
+        |--------------------------------------------------------------------------
+        | 5. Commit
+        |--------------------------------------------------------------------------
+        */
+
+        DB::commit();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 6. Redirect
+        |--------------------------------------------------------------------------
+        */
+
+        return redirect()
+            ->route('public.my-requests')
+            ->with(
+                'success',
+                'ကယ်ဆယ်ရေးအကူအညီ တောင်းခံလွှာကို အောင်မြင်စွာ ပေးပို့ပြီးပါပြီ။'
+            );
+
+    } catch (\Throwable $e) {
+
+        DB::rollBack();
+
+        return redirect()
+            ->back()
+            ->withInput()
+            ->with(
+                'error',
+                'တောင်းခံလွှာ မအောင်မြင်ပါ။ Error: ' .
+                $e->getMessage()
+            );
+    }
+}
 
     public function createDonation()
     {
@@ -185,79 +262,86 @@ class FrontController extends Controller
         return view('front.donate', compact('categories', 'items', 'warehouses'));
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | STORE DONATION
-    |--------------------------------------------------------------------------
-    */
-
     public function storeDonation(StoreDonationRequest $request)
     {
-        $validated = $request->validated();
-
         DB::beginTransaction();
 
         try {
             $user = Auth::user();
 
-            if (!$user) {
-                throw new Exception('အသုံးပြုသူအကောင့်သို့ Login ဝင်ထားရန် လိုအပ်ပါသည်။');
-            }
+            $donorName  = $request->donor_name;
+            $donorPhone = $request->phone;
+            $donorEmail = $request->email;
 
-            // Find or Create Donor
             $donor = Donor::firstOrCreate(
-                ['email' => $user->email],
+                ['email' => $donorEmail],
                 [
-                    'name'  => $user->name,
-                    'phone' => $user->phone ?? null,
+                    'name'  => $donorName,
+                    'phone' => $donorPhone,
                 ]
             );
 
-            // Create Donation
             $donation = Donation::create([
+                'user_id'       => $user ? $user->id : null,
                 'donor_id'      => $donor->id,
-                'warehouse_id'  => $validated['warehouse_id'],
-                'donation_type' => $validated['donation_type'],
-                'donation_date' => $validated['donation_date'],
+                'donor_name'    => $donorName,
+                'phone'         => $donorPhone,
+                'email'         => $donorEmail,
+                'warehouse_id'  => $request->warehouse_id,
+                'donation_type' => $request->donation_type,
+                'donation_date' => $request->donation_date,
                 'status'        => 'Pending',
-                'note'          => $validated['note'] ?? null,
+                'note'          => $request->note ?? null,
             ]);
 
-            // Save Cash Payment Details (if Cash or Both)
-            if (in_array($validated['donation_type'], ['Cash', 'Both'])) {
-                $proofPath = null;
-                if ($request->hasFile('proof')) {
-                    $proofPath = $request->file('proof')->store('donation-proofs', 'public');
+            if (in_array($request->donation_type, ['Cash', 'Both'])) {
+                if (!empty($request->amount) && $request->amount > 0) {
+                    DonationPayment::create([
+                        'donation_id'           => $donation->id,
+                        'payment_method'        => $request->payment_method ?? 'Cash',
+                        'amount'                => $request->amount,
+                        'payment_date'          => $request->donation_date,
+                        'transaction_reference' => $request->transaction_reference ?? null,
+                        'account_name'          => $request->account_name ?? null,
+                        'account_number'        => $request->account_number ?? null,
+                        'currency'              => $request->currency ?? 'MMK',
+                        'status'                => 'Pending',
+                        'note'                  => $request->payment_note ?? null,
+                        'proof'                 => $request->hasFile('proof') ? $request->file('proof')->store('slips', 'public') : null,
+                    ]);
                 }
-
-                DonationPayment::create([
-                    'donation_id'           => $donation->id,
-                    'payment_method'        => $validated['payment_method'] ?? null,
-                    'transaction_reference' => $validated['transaction_reference'] ?? null,
-                    'payment_date'          => $validated['donation_date'],
-                    'account_name'          => $validated['account_name'] ?? null,
-                    'account_number'        => $validated['account_number'] ?? null,
-                    'amount'                => $validated['amount'] ?? 0,
-                    'currency'              => 'MMK',
-                    'proof'                 => $proofPath,
-                    'status'                => 'Pending',
-                    'note'                  => $validated['note'] ?? null,
-                ]);
             }
 
-            // Save Item Details (if Item or Both)
-            if (in_array($validated['donation_type'], ['Item', 'Both'])) {
-                if (!empty($validated['items'])) {
-                    foreach ($validated['items'] as $itemData) {
-                        if (empty($itemData['item_id']) || empty($itemData['quantity'])) {
+            if (in_array($request->donation_type, ['Item', 'Both'])) {
+                if (!empty($request->items)) {
+                    foreach ($request->items as $itemData) {
+                        $itemId   = $itemData['item_id'] ?? null;
+                        $quantity = $itemData['quantity'] ?? 0;
+
+                        if (empty($quantity)) {
+                            continue;
+                        }
+
+                        if (empty($itemId) && !empty($itemData['new_item_name'])) {
+                            $newItem = Item::create([
+                                'name'        => $itemData['new_item_name'],
+                                'category_id' => $itemData['category_id'] ?? null,
+                                'unit'        => $itemData['unit'] ?? null,
+                                'status'      => 'Active',
+                            ]);
+                            $itemId = $newItem->id;
+                        }
+
+                        if (empty($itemId)) {
                             continue;
                         }
 
                         DonationItem::create([
-                            'donation_id' => $donation->id,
-                            'item_id'     => $itemData['item_id'],
-                            'quantity'    => $itemData['quantity'],
-                            'unit'        => $itemData['unit'] ?? null,
+                            'donation_id'  => $donation->id,
+                            'item_id'      => $itemId,
+                            'quantity'     => $quantity,
+                            'unit'         => $itemData['unit'] ?? null,
+                            'expired_date' => $itemData['expired_date'] ?? null,
                         ]);
                     }
                 }
@@ -279,28 +363,11 @@ class FrontController extends Controller
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | DONATION HISTORY
-    |--------------------------------------------------------------------------
-    */
-
     public function donationHistory()
     {
-        $user = Auth::user();
-
-        if (!$user) {
-            return redirect()->route('login');
-        }
-
-        $donor = Donor::where('email', $user->email)->first();
-
-        $donations = $donor
-            ? Donation::with(['donor', 'warehouse', 'donationItems.item', 'payment'])
-                ->where('donor_id', $donor->id)
-                ->latest()
-                ->paginate(10)
-            : new LengthAwarePaginator([], 0, 10);
+        $donations = Donation::with(['donor', 'warehouse', 'donationItems.item', 'payment'])
+            ->latest()
+            ->paginate(10);
 
         return view('front.donation-history', compact('donations'));
     }

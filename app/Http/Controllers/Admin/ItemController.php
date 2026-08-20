@@ -34,7 +34,8 @@ class ItemController extends Controller
             $query->where('category_id', $request->category_id);
         }
 
-        $items = $query->latest()->paginate(15)->withQueryString();
+        // withQueryString() အစား appends($request->all()) ကို သုံးခြင်း သို့မဟုတ် query string ထည့်ခြင်း
+        $items = $query->latest()->paginate(15)->appends($request->query());
         $categories = Category::orderBy('name', 'asc')->get();
 
         return view('admin.items.index', compact('items', 'categories'));

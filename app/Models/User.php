@@ -37,10 +37,10 @@ class User extends Authenticatable
     /**
      * Warehouse Manager belongs to one Warehouse.
      */
-    public function warehouse()
-    {
-        return $this->belongsTo(Warehouse::class, 'warehouse_id');
-    }
+       public function warehouse()
+{
+    return $this->belongsTo(Warehouse::class);
+}
 
     public function stockMovements()
     {
@@ -62,4 +62,5 @@ class User extends Authenticatable
             'handled_by'
         );
     }
+
 }

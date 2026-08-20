@@ -1,381 +1,718 @@
+```blade
 @extends('layouts.admin')
 
-@section('title', 'လှူဒါန်းမှုအသေးစိတ် #' . $donation->id)
+@section('title', 'လှူဒါန်းမှုအသေးစိတ် #' . $donationPayment->id)
 
 @section('button')
 
-<a href="{{ route('backend.donations.index') }}"
-   class="btn btn-secondary">
+<a href="{{ route('backend.donation_payments.index') }}"
+   class="btn btn-secondary btn-sm">
 
     <i class="fas fa-arrow-left me-1"></i>
+
     လှူဒါန်းမှုစာရင်းသို့ ပြန်သွားရန်
 
 </a>
 
+@if(Route::has('backend.donation_payments.pdf'))
+
+<a href="{{ route('backend.donation_payments.pdf', $donationPayment->id) }}"
+   target="_blank"
+   class="btn btn-danger btn-sm ms-2">
+
+    <i class="fas fa-file-pdf me-1"></i>
+
+    PDF
+
+</a>
+
+@endif
+
 @endsection
+
 
 @section('content')
 
-<div class="container-fluid">
+{{-- =========================================================
+    SUCCESS MESSAGE
+========================================================= --}}
 
-    {{-- Success Message --}}
-    @if(session('success'))
+@if(session('success'))
 
-        <div class="alert alert-success alert-dismissible fade show mb-3">
+<div class="alert alert-success alert-dismissible fade show mb-4">
 
-            <i class="fas fa-check-circle me-1"></i>
+    <i class="fas fa-check-circle me-1"></i>
 
-            {{ session('success') }}
+    {{ session('success') }}
 
-            <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="alert">
-            </button>
+    <button type="button"
+            class="btn-close"
+            data-bs-dismiss="alert">
+    </button>
 
-        </div>
+</div>
 
-    @endif
-
-
-    {{-- Error Message --}}
-    @if(session('error'))
-
-        <div class="alert alert-danger alert-dismissible fade show mb-3">
-
-            <i class="fas fa-exclamation-circle me-1"></i>
-
-            {{ session('error') }}
-
-            <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="alert">
-            </button>
-
-        </div>
-
-    @endif
+@endif
 
 
-    <div class="row">
+{{-- =========================================================
+    ERROR MESSAGE
+========================================================= --}}
 
-        {{-- ========================= --}}
+@if(session('error'))
+
+<div class="alert alert-danger alert-dismissible fade show mb-4">
+
+    <i class="fas fa-exclamation-circle me-1"></i>
+
+    {{ session('error') }}
+
+    <button type="button"
+            class="btn-close"
+            data-bs-dismiss="alert">
+    </button>
+
+</div>
+
+@endif
+
+
+<div class="row">
+
+    {{-- =====================================================
+        LEFT SIDE
+        DONATION + DONOR + PAYMENT
+    ====================================================== --}}
+
+    <div class="col-lg-4 mb-4">
+
         {{-- Donation Information --}}
-        {{-- ========================= --}}
 
-        <div class="col-md-4 mb-4">
+        <div class="card shadow-sm border-0 mb-4">
 
-            <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white">
 
-                <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 fw-bold">
 
-                    <h5 class="mb-0 fw-bold">
+                    <i class="fas fa-hand-holding-heart me-2"></i>
 
-                        <i class="fas fa-hand-holding-heart me-2"></i>
+                    လှူဒါန်းမှုအသေးစိတ်
 
-                        လှူဒါန်းမှုအသေးစိတ်
+                </h5>
 
-                    </h5>
-
-                </div>
+            </div>
 
 
-                <div class="card-body">
+            <div class="card-body">
 
-                    {{-- Donation ID --}}
-                    <p>
 
-                        <strong>
-                            လှူဒါန်းမှုအမှတ်:
-                        </strong>
+                {{-- Payment ID --}}
 
-                        #DON-{{ str_pad(
-                            $donation->id,
+                <div class="mb-3">
+
+                    <small class="text-muted d-block">
+                        ငွေပေးချေမှုအမှတ်
+                    </small>
+
+                    <strong>
+
+                        #DPY-{{ str_pad(
+                            $donationPayment->id,
                             4,
                             '0',
                             STR_PAD_LEFT
                         ) }}
 
-                    </p>
+                    </strong>
+
+                </div>
 
 
-                    {{-- Donor --}}
-                    <p>
+                {{-- =================================================
+                    DONOR INFORMATION
+                ================================================== --}}
 
-                        <strong>
-                            အလှူရှင်:
-                        </strong>
+                <hr>
 
-                        {{ $donation->donor->name ?? 'မရှိပါ' }}
+                <h6 class="fw-bold text-primary mb-3">
 
-                    </p>
+                    <i class="fas fa-user me-2"></i>
 
+                    အလှူရှင်အချက်အလက်
 
-                    {{-- Warehouse --}}
-                    <p>
-
-                        <strong>
-                            ဂိုဒေါင်:
-                        </strong>
-
-                        {{ $donation->warehouse->name ?? '-' }}
-
-                    </p>
+                </h6>
 
 
-                    {{-- Status --}}
-                    <p>
+                {{-- Donor Name --}}
 
-                        <strong>
-                            အခြေအနေ:
-                        </strong>
+                <div class="mb-3">
 
-                        @if($donation->status === 'Pending')
+                    <small class="text-muted d-block">
+                        အလှူရှင်အမည်
+                    </small>
 
-                            <span class="badge bg-warning text-dark">
+                    <strong>
 
-                                <i class="fas fa-clock me-1"></i>
+                        {{ $donor?->name ?? 'စေတနာရှင် မသိရှိပါ' }}
 
-                                စောင့်ဆိုင်းနေသည်
+                    </strong>
 
-                            </span>
-
-                        @elseif($donation->status === 'Received')
-
-                            <span class="badge bg-success">
-
-                                <i class="fas fa-check-circle me-1"></i>
-
-                                လက်ခံပြီး
-
-                            </span>
-
-                        @else
-
-                            <span class="badge bg-danger">
-
-                                <i class="fas fa-times-circle me-1"></i>
-
-                                ပယ်ဖျက်ထားသည်
-
-                            </span>
-
-                        @endif
-
-                    </p>
+                </div>
 
 
-                    {{-- Note --}}
-                    <p>
+                {{-- Donor Phone --}}
 
-                        <strong>
-                            မှတ်ချက်:
-                        </strong>
+                <div class="mb-3">
 
-                        {{ $donation->note ?? '-' }}
+                    <small class="text-muted d-block">
+                        ဖုန်းနံပါတ်
+                    </small>
 
-                    </p>
+                    @if($donor?->phone)
 
+                        <a href="tel:{{ $donor->phone }}"
+                           class="text-decoration-none">
 
-                    <hr>
+                            <i class="fas fa-phone me-1"></i>
 
+                            {{ $donor->phone }}
 
-                    {{-- Receive Donation --}}
-                    @if($donation->status === 'Pending')
+                        </a>
 
-                        <div class="alert alert-info">
+                    @else
 
-                            <i class="fas fa-info-circle me-1"></i>
-
-                            လှူဒါန်းထားသောပစ္စည်းများကို လက်ခံပြီးပါက
-                            Inventory Stock ထဲသို့ အလိုအလျောက်
-                            ထည့်သွင်းသွားမည်ဖြစ်ပါသည်။
-
-                        </div>
-
-
-                        <form
-                            action="{{ route(
-                                'backend.donations.receive',
-                                $donation->id
-                            ) }}"
-                            method="POST"
-                            onsubmit="return confirm(
-                                'ဤလှူဒါန်းမှုကို လက်ခံမည်မှာ သေချာပါသလား? လက်ခံပြီးပါက Inventory Stock ထဲသို့ ပစ္စည်းအရေအတွက်များ တိုးသွားမည်ဖြစ်ပါသည်။'
-                            )"
-                        >
-
-                            @csrf
-
-                            <button
-                                type="submit"
-                                class="btn btn-success w-100 fw-bold"
-                            >
-
-                                <i class="fas fa-check-circle me-1"></i>
-
-                                လှူဒါန်းမှု လက်ခံရန်
-                                (Stock IN)
-
-                            </button>
-
-                        </form>
-
-                    @elseif($donation->status === 'Received')
-
-                        <div class="alert alert-success mb-0">
-
-                            <i class="fas fa-check-circle me-1"></i>
-
-                            ဤလှူဒါန်းမှုကို လက်ခံပြီးဖြစ်ပြီး
-                            Inventory Stock ထဲသို့ ထည့်သွင်းပြီးဖြစ်ပါသည်။
-
-                        </div>
+                        <span class="text-muted">-</span>
 
                     @endif
 
                 </div>
+
+
+                {{-- Donor Email --}}
+
+                <div class="mb-3">
+
+                    <small class="text-muted d-block">
+                        အီးမေးလ်
+                    </small>
+
+                    @if($donor?->email)
+
+                        <a href="mailto:{{ $donor->email }}"
+                           class="text-decoration-none">
+
+                            <i class="fas fa-envelope me-1"></i>
+
+                            {{ $donor->email }}
+
+                        </a>
+
+                    @else
+
+                        <span class="text-muted">-</span>
+
+                    @endif
+
+                </div>
+
+
+                {{-- Donor Address --}}
+
+                <div class="mb-3">
+
+                    <small class="text-muted d-block">
+                        လိပ်စာ
+                    </small>
+
+                    <span>
+
+                        {{ $donor?->address ?? '-' }}
+
+                    </span>
+
+                </div>
+
+
+                {{-- =================================================
+                    WAREHOUSE
+                ================================================== --}}
+
+                <hr>
+
+                <div class="mb-3">
+
+                    <small class="text-muted d-block">
+                        ဂိုဒေါင်
+                    </small>
+
+                    <strong>
+
+                        {{ $warehouse?->name ?? '-' }}
+
+                    </strong>
+
+                </div>
+
 
             </div>
 
         </div>
 
 
-        {{-- ========================= --}}
-        {{-- Donated Items --}}
-        {{-- ========================= --}}
+        {{-- =====================================================
+            PAYMENT INFORMATION
+        ====================================================== --}}
 
-        <div class="col-md-8 mb-4">
+        <div class="card shadow-sm border-0">
 
-            <div class="card shadow-sm border-0">
+            <div class="card-header bg-success text-white">
 
-                <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold">
 
-                    <h5 class="mb-0 fw-bold">
+                    <i class="fas fa-money-bill-wave me-2"></i>
 
-                        <i class="fas fa-boxes text-primary me-2"></i>
+                    ငွေပေးချေမှုအချက်အလက်
 
-                        လှူဒါန်းထားသော ပစ္စည်းများ
+                </h5>
+
+            </div>
+
+
+            <div class="card-body">
+
+
+                {{-- Payment Method --}}
+
+                <div class="mb-3">
+
+                    <small class="text-muted d-block">
+                        ငွေပေးချေမှုနည်းလမ်း
+                    </small>
+
+                    <strong>
+
+                        {{ $donationPayment->payment_method ?? '-' }}
+
+                    </strong>
+
+                </div>
+
+
+                {{-- Transaction Reference --}}
+
+                <div class="mb-3">
+
+                    <small class="text-muted d-block">
+                        Transaction Reference
+                    </small>
+
+                    <strong>
+
+                        {{ $donationPayment->transaction_reference ?? '-' }}
+
+                    </strong>
+
+                </div>
+
+
+                {{-- Payment Date --}}
+
+                <div class="mb-3">
+
+                    <small class="text-muted d-block">
+                        ငွေပေးချေသည့်နေ့
+                    </small>
+
+                    <strong>
+
+                        {{ $donationPayment->payment_date?->format('d-m-Y') ?? '-' }}
+
+                    </strong>
+
+                </div>
+
+
+                {{-- Amount --}}
+
+                <div class="mb-3">
+
+                    <small class="text-muted d-block">
+                        ငွေပမာဏ
+                    </small>
+
+                    <h5 class="fw-bold text-success mb-0">
+
+                        {{ number_format(
+                            (float) $donationPayment->amount,
+                            2
+                        ) }}
+
+                        {{ $donationPayment->currency ?? 'MMK' }}
 
                     </h5>
 
                 </div>
 
 
-                <div class="card-body">
+                {{-- Account Name --}}
 
-                    @if($donation->donationItems->count())
+                <div class="mb-3">
 
-                        <div class="table-responsive">
+                    <small class="text-muted d-block">
+                        ငွေလွှဲအကောင့်အမည်
+                    </small>
 
-                            <table class="table table-bordered align-middle">
+                    <span>
 
-                                <thead class="table-light">
+                        {{ $donationPayment->account_name ?? '-' }}
 
-                                    <tr>
+                    </span>
 
-                                        <th style="width:60px;">
-                                            #
-                                        </th>
-
-                                        <th>
-                                            ပစ္စည်းအမည်
-                                        </th>
-
-                                        <th>
-                                            ယူနစ်
-                                        </th>
-
-                                        <th class="text-end">
-                                            အရေအတွက်
-                                        </th>
-
-                                    </tr>
-
-                                </thead>
+                </div>
 
 
-                                <tbody>
+                {{-- Account Number --}}
 
-                                    @foreach($donation->donationItems as $dItem)
+                <div class="mb-3">
 
-                                        <tr>
+                    <small class="text-muted d-block">
+                        ငွေလွှဲအကောင့်နံပါတ်
+                    </small>
 
-                                            {{-- Number --}}
-                                            <td>
+                    <span>
 
-                                                {{ $loop->iteration }}
+                        {{ $donationPayment->account_number ?? '-' }}
 
-                                            </td>
+                    </span>
 
-
-                                            {{-- Item Name --}}
-                                            <td>
-
-                                                <i class="fas fa-box text-secondary me-1"></i>
-
-                                                <strong>
-                                                    {{ $dItem->item->name ?? 'ပစ္စည်းမရှိပါ' }}
-                                                </strong>
-
-                                            </td>
+                </div>
 
 
-                                            {{-- Unit --}}
-                                            <td>
+                {{-- Status --}}
 
-                                                {{ $dItem->item->unit ?? '-' }}
+                <div class="mb-3">
 
-                                            </td>
+                    <small class="text-muted d-block mb-1">
+                        အခြေအနေ
+                    </small>
 
 
-                                            {{-- Quantity --}}
-                                            <td class="text-end">
+                    @if($donationPayment->status === 'Pending')
 
-                                                <strong class="text-primary">
+                        <span class="badge bg-warning text-dark">
 
-                                                    {{ number_format(
-                                                        $dItem->quantity
-                                                    ) }}
+                            <i class="fas fa-clock me-1"></i>
 
-                                                </strong>
+                            စောင့်ဆိုင်းနေသည်
 
-                                                <span class="text-muted">
+                        </span>
 
-                                                    {{ $dItem->item->unit ?? '' }}
+                    @elseif($donationPayment->status === 'Completed')
 
-                                                </span>
+                        <span class="badge bg-success">
 
-                                            </td>
+                            <i class="fas fa-check-circle me-1"></i>
 
-                                        </tr>
+                            ပြီးမြောက်သည်
 
-                                    @endforeach
+                        </span>
 
-                                </tbody>
+                    @elseif($donationPayment->status === 'Cancelled')
 
-                            </table>
+                        <span class="badge bg-danger">
 
-                        </div>
+                            <i class="fas fa-times-circle me-1"></i>
+
+                            ပယ်ဖျက်ထားသည်
+
+                        </span>
 
                     @else
 
-                        <div class="text-center py-4 text-muted">
+                        <span class="badge bg-secondary">
 
-                            <i class="fas fa-box-open fa-2x mb-2 d-block"></i>
+                            {{ $donationPayment->status ?? '-' }}
 
-                            လှူဒါန်းထားသော ပစ္စည်းစာရင်း မရှိသေးပါ။
-
-                        </div>
+                        </span>
 
                     @endif
 
                 </div>
 
+
+                {{-- Note --}}
+
+                <div class="mb-0">
+
+                    <small class="text-muted d-block">
+                        မှတ်ချက်
+                    </small>
+
+                    <span>
+
+                        {{ $donationPayment->note ?? '-' }}
+
+                    </span>
+
+                </div>
+
+
             </div>
 
         </div>
+
+    </div>
+
+
+    {{-- =====================================================
+        RIGHT SIDE
+        PAYMENT PROOF + DONATED ITEMS
+    ====================================================== --}}
+
+    <div class="col-lg-8 mb-4">
+
+
+        {{-- =================================================
+            PAYMENT PROOF
+        ================================================== --}}
+
+        <div class="card shadow-sm border-0 mb-4">
+
+            <div class="card-header bg-white py-3">
+
+                <h5 class="mb-0 fw-bold">
+
+                    <i class="fas fa-receipt text-primary me-2"></i>
+
+                    ငွေလွှဲအထောက်အထား
+
+                </h5>
+
+            </div>
+
+
+            <div class="card-body text-center">
+
+
+                @if($donationPayment->proof)
+
+                    <a href="{{ asset(
+                        'storage/' . $donationPayment->proof
+                    ) }}"
+                       target="_blank"
+                       class="d-inline-block">
+
+                        <img
+                            src="{{ asset(
+                                'storage/' . $donationPayment->proof
+                            ) }}"
+                            alt="Payment Proof"
+                            class="img-fluid rounded border shadow-sm"
+                            style="
+                                max-height: 450px;
+                                max-width: 100%;
+                                object-fit: contain;
+                            "
+                        >
+
+                    </a>
+
+
+                    <div class="mt-3">
+
+                        <a href="{{ asset(
+                            'storage/' . $donationPayment->proof
+                        ) }}"
+                           target="_blank"
+                           class="btn btn-outline-primary btn-sm">
+
+                            <i class="fas fa-external-link-alt me-1"></i>
+
+                            အထောက်အထားကို အပြည့်အစုံကြည့်ရန်
+
+                        </a>
+
+                    </div>
+
+                @else
+
+                    <div class="py-5 text-muted">
+
+                        <i class="fas fa-file-image fa-3x mb-3"></i>
+
+                        <p class="mb-0">
+
+                            ငွေလွှဲအထောက်အထား မရှိသေးပါ။
+
+                        </p>
+
+                    </div>
+
+                @endif
+
+
+            </div>
+
+        </div>
+
+
+        {{-- =================================================
+            DONATED ITEMS
+        ================================================== --}}
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-header bg-white py-3">
+
+                <h5 class="mb-0 fw-bold">
+
+                    <i class="fas fa-boxes text-primary me-2"></i>
+
+                    လှူဒါန်းထားသော ပစ္စည်းများ
+
+                </h5>
+
+            </div>
+
+
+            <div class="card-body">
+
+                @if($donatedItems->count())
+
+                    <div class="table-responsive">
+
+                        <table class="table table-bordered table-hover align-middle mb-0">
+
+                            <thead class="table-light">
+
+                                <tr>
+
+                                    <th style="width:60px;">
+                                        #
+                                    </th>
+
+                                    <th>
+                                        ပစ္စည်းအမည်
+                                    </th>
+
+                                    <th class="text-end">
+                                        အရေအတွက်
+                                    </th>
+
+                                    <th>
+                                        ယူနစ်
+                                    </th>
+
+                                    <th>
+                                        ဂိုဒေါင်
+                                    </th>
+
+                                    <th>
+                                        အခြေအနေ
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+
+                            <tbody>
+
+                                @foreach($donatedItems as $index => $donationItem)
+
+                                    <tr>
+
+                                        {{-- Number --}}
+
+                                        <td>
+
+                                            {{ $index + 1 }}
+
+                                        </td>
+
+
+                                        {{-- Item Name --}}
+
+                                        <td>
+
+                                            <strong>
+
+                                                {{ $donationItem->item?->name ?? '-' }}
+
+                                            </strong>
+
+                                        </td>
+
+
+                                        {{-- Quantity --}}
+
+                                        <td class="text-end">
+
+                                            {{ number_format(
+                                                (float) ($donationItem->quantity ?? 0)
+                                            ) }}
+
+                                        </td>
+
+
+                                        {{-- Unit --}}
+
+                                        <td>
+
+                                            {{ $donationItem->item?->unit ?? '-' }}
+
+                                        </td>
+
+
+                                        {{-- Warehouse --}}
+
+                                        <td>
+
+                                            {{ $warehouse?->name ?? '-' }}
+
+                                        </td>
+
+
+                                        {{-- Status --}}
+
+                                        <td>
+
+                                            <span class="badge bg-success">
+
+                                                <i class="fas fa-check me-1"></i>
+
+                                                လက်ခံရရှိပြီး
+
+                                            </span>
+
+                                        </td>
+
+                                    </tr>
+
+                                @endforeach
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                @else
+
+                    <div class="text-center py-5 text-muted">
+
+                        <i class="fas fa-box-open fa-3x mb-3 d-block"></i>
+
+                        လှူဒါန်းထားသော ပစ္စည်းစာရင်း မရှိသေးပါ။
+
+                    </div>
+
+                @endif
+
+            </div>
+
+        </div>
+
 
     </div>
 

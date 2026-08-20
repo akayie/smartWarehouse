@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToWarehouse;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\BelongsToWarehouse;
+
 class Distribution extends Model
 {
-    use HasFactory, SoftDeletes,BelongsToWarehouse;
+    use HasFactory, SoftDeletes, BelongsToWarehouse;
 
     protected $fillable = [
         'request_id',
@@ -16,17 +19,23 @@ class Distribution extends Model
         'handled_by',
         'distribution_date',
         'status',
+        'funding_amount',
         'note',
     ];
 
     protected $casts = [
         'distribution_date' => 'date',
+        'funding_amount' => 'decimal:2',
     ];
 
+    /* =====================================================
+       RELATIONSHIPS
+    ====================================================== */
+
     /**
-     * Distribution belongs to a Relief Request.
+     * Distribution belongs to Relief Request
      */
-    public function request()
+    public function request(): BelongsTo
     {
         return $this->belongsTo(
             ReliefRequest::class,
@@ -35,17 +44,17 @@ class Distribution extends Model
     }
 
     /**
-     * Alias method for backward compatibility
+     * Backward compatibility
      */
-    public function reliefRequest()
+    public function reliefRequest(): BelongsTo
     {
         return $this->request();
     }
 
     /**
-     * Distribution belongs to a Warehouse.
+     * Distribution belongs to Warehouse
      */
-    public function warehouse()
+    public function warehouse(): BelongsTo
     {
         return $this->belongsTo(
             Warehouse::class,
@@ -54,9 +63,9 @@ class Distribution extends Model
     }
 
     /**
-     * Distribution is handled by a User.
+     * Distribution handled by User
      */
-    public function handledBy()
+    public function handledBy(): BelongsTo
     {
         return $this->belongsTo(
             User::class,
@@ -65,13 +74,25 @@ class Distribution extends Model
     }
 
     /**
-     * Distribution has many Distribution Items.
+     * Distribution has many Distribution Items
      */
-    public function distributionItems()
+    public function distributionItems(): HasMany
     {
         return $this->hasMany(
             DistributionItem::class,
             'distribution_id'
         );
+    }
+
+    /**
+     * Alias: items
+     *
+     * Controller / Blade မှာ
+     * $distribution->items
+     * သုံးချင်တဲ့အတွက်
+     */
+    public function items(): HasMany
+    {
+        return $this->distributionItems();
     }
 }

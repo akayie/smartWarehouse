@@ -64,9 +64,10 @@ class Kernel extends HttpKernel
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        'checkrole' => \App\Http\Middleware\CheckUserRole::class,
 
-        // ဒီလိုင်းလေး ထည့်ပေးပါ 👇
-        'admin' => \App\Http\Middleware\CheckUserRole::class,
+        // Role Middleware အဖြစ် CheckUserRole သို့မဟုတ် EnsureUserRole တစ်ခုတည်းကိုသာ စံထား၍ ညွှန်းပါ
+        'role' => \App\Http\Middleware\CheckUserRole::class,
+        'checkrole' => \App\Http\Middleware\CheckUserRole::class,
+        'admin' => \App\Http\Middleware\AdminMiddleware::class,
     ];
 }

@@ -28,6 +28,7 @@ class InventoryPolicy
             return true;
         }
 
-        return $user->warehouses()->where('warehouses.id', $inventory->warehouse_id)->exists();
+        // warehouse_id ကို တိုက်ရိုက် တိုက်စစ်ခြင်း
+        return (int) $user->warehouse_id === (int) $inventory->warehouse_id;
     }
 }

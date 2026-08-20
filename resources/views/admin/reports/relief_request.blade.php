@@ -28,9 +28,9 @@
                     <label class="form-label fw-bold">အခြေအနေ</label>
                     <select name="status" class="form-select">
                         <option value="">အခြေအနေ အားလုံး</option>
-                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>စောင့်ဆိုင်းဆဲ</option>
-                        <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>ခွင့်ပြုပြီး</option>
-                        <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>ငြင်းပယ်ထားသည်</option>
+                        <option value="Pending" {{ request('status') == 'Pending' ? 'selected' : '' }}>စောင့်ဆိုင်းဆဲ</option>
+                        <option value="Approved" {{ request('status') == 'Approved' ? 'selected' : '' }}>ခွင့်ပြုပြီး</option>
+                        <option value="Rejected" {{ request('status') == 'Rejected' ? 'selected' : '' }}>ငြင်းပယ်ထားသည်</option>
                     </select>
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
@@ -52,18 +52,20 @@
                 <table class="table table-bordered table-striped align-middle">
                     <thead class="table-dark">
                         <tr>
-                            <th style="width: 130px;">ရက်စွဲ</th>
-                            <th>တောင်းဆိုသူ</th>
+                            <th style="width: 120px;">ရက်စွဲ</th>
+                            <th>အမည်</th>
+                            <th>ဖုန်းနံပါတ်</th>
                             <th>ဘေးအန္တရာယ် ဖြစ်စဉ်</th>
                             <th>တောင်းဆိုထားသည့် ပစ္စည်းများ</th>
-                            <th class="text-center" style="width: 150px;">အခြေအနေ</th>
+                            <th class="text-center" style="width: 130px;">အခြေအနေ</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($reliefRequests as $req)
                             <tr>
                                 <td>{{ $req->created_at->format('d-M-Y') }}</td>
-                                <td class="fw-bold">{{ $req->user->name ?? 'မရှိပါ' }}</td>
+                                <td class="fw-bold">{{ $req->name ?? '-' }}</td>
+                                <td>{{ $req->phone_number ?? '-' }}</td>
                                 <td>{{ $req->disaster->name ?? 'အထွေထွေ ထောက်ပံ့မှု' }}</td>
                                 <td>
                                     <ul class="mb-0 ps-3">
@@ -91,7 +93,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center py-4 text-muted">
+                                <td colspan="7" class="text-center py-4 text-muted">
                                     ကူညီထောက်ပံ့မှု တောင်းဆိုချက် မှတ်တမ်းများ မရှိသေးပါ။
                                 </td>
                             </tr>

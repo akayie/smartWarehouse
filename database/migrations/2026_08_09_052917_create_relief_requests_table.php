@@ -12,7 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('relief_requests', function (Blueprint $table) {
-
             $table->id();
 
             $table->foreignId('disaster_id')
@@ -22,6 +21,10 @@ return new class extends Migration
             $table->foreignId('requested_by')
                 ->constrained('users')
                 ->restrictOnDelete();
+
+            // Added contact fields
+            $table->string('name');
+            $table->string('phone_number');
 
             $table->string('location');
 

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DonationPayment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class DonationPaymentController extends Controller
 {
@@ -13,56 +15,249 @@ class DonationPaymentController extends Controller
      */
     public function index(Request $request)
     {
-        // 1. Relationship များပါဝင်သော Query ကို စတင်တည်ဆောက်ပါ
-        $query = DonationPayment::with(['donation.donor']);
+        $user = Auth::user();
 
-        // 2. Search Filter (Transaction Ref, Account Name, Donor Name)
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('transaction_reference', 'like', "%{$search}%")
-                    ->orWhere('account_name', 'like', "%{$search}%")
-                    ->orWhereHas('donation.donor', function ($donorQuery) use ($search) {
-                        $donorQuery->where('name', 'like', "%{$search}%");
-                    });
+        $query = DonationPayment::with([
+            'donation.donor',
+            'donation.warehouse',
+            'donation.donationItems.item',
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Warehouse Filter
+        |--------------------------------------------------------------------------
+        */
+        if (
+            in_array($user->role, ['warehouse_manager', 'manager'])
+            && !empty($user->warehouse_id)
+        ) {
+            $query->whereHas('donation', function ($q) use ($user) {
+                $q->where('warehouse_id', $user->warehouse_id);
             });
         }
 
-        // 3. Payment Method Filter (e.g. KBZPay, CBPay, Cash, Bank Transfer)
+        /*
+        |--------------------------------------------------------------------------
+        | Search
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+
+            $query->where(function ($q) use ($search) {
+
+                // Payment transaction reference
+                $q->where(
+                    'transaction_reference',
+                    'like',
+                    "%{$search}%"
+                )
+
+                // Account name
+                ->orWhere(
+                    'account_name',
+                    'like',
+                    "%{$search}%"
+                )
+
+                // Donor name
+                ->orWhereHas(
+                    'donation.donor',
+                    function ($donorQuery) use ($search) {
+                        $donorQuery
+                            ->where('name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    }
+                );
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Payment Method
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('payment_method')) {
-            $query->where('payment_method', $request->payment_method);
+            $query->where(
+                'payment_method',
+                $request->payment_method
+            );
         }
 
-        // 4. Status Filter (Completed, Pending, Failed, Cancelled)
+        /*
+        |--------------------------------------------------------------------------
+        | Status
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where(
+                'status',
+                $request->status
+            );
         }
 
-        // 5. Date Range Filter
+        /*
+        |--------------------------------------------------------------------------
+        | From Date
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('from_date')) {
-            $query->whereDate('payment_date', '>=', $request->from_date);
+            $query->whereDate(
+                'payment_date',
+                '>=',
+                $request->from_date
+            );
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | To Date
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('to_date')) {
-            $query->whereDate('payment_date', '<=', $request->to_date);
+            $query->whereDate(
+                'payment_date',
+                '<=',
+                $request->to_date
+            );
         }
 
-        // 🌟 6. စစ်ထုတ်ထားသော ရလဒ်များအပေါ် မူတည်၍ amount column ဖြင့် စုစုပေါင်း တွက်ချက်ခြင်း
-        // Filter လုပ်ထားသမျှ အားလုံးရဲ့ ငွေပမာဏ စုစုပေါင်း
-        $totalAmount = (clone $query)->sum('amount');
+        /*
+        |--------------------------------------------------------------------------
+        | Total Amount
+        |--------------------------------------------------------------------------
+        */
+        $totalAmount = (clone $query)
+            ->sum('amount');
 
-        // Filter လုပ်ထားသမျှ ထဲမှ Status က "Completed" ဖြစ်သော ငွေပမာဏ စုစုပေါင်း
-        $totalCompletedAmount = (clone $query)->where('status', 'Completed')->sum('amount');
+        /*
+        |--------------------------------------------------------------------------
+        | Completed Amount
+        |--------------------------------------------------------------------------
+        */
+        $totalCompletedAmount = (clone $query)
+            ->where('status', 'Completed')
+            ->sum('amount');
 
-        // 7. Pagination ပြုလုပ်ပြီး View ထံ ပို့ပါ
-        $donationPayments = $query->latest('id')
+        /*
+        |--------------------------------------------------------------------------
+        | Pagination
+        |--------------------------------------------------------------------------
+        */
+        $donationPayments = $query
+            ->latest('id')
             ->paginate(15)
-            ->appends($request->all());
+            ->appends($request->query());
 
-        return view('admin.donation_payments.index', compact(
-            'donationPayments',
-            'totalAmount',
-            'totalCompletedAmount'
-        ));
+        return view(
+            'admin.donation_payments.index',
+            compact(
+                'donationPayments',
+                'totalAmount',
+                'totalCompletedAmount'
+            )
+        );
+    }
+
+
+    /**
+     * Display the specified donation payment.
+     */
+    public function show($id)
+    {
+        $donationPayment = DonationPayment::with([
+            'donation.donor',
+            'donation.warehouse',
+            'donation.donationItems.item',
+        ])->findOrFail($id);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Donation
+        |--------------------------------------------------------------------------
+        */
+        $donation = $donationPayment->donation;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Donor
+        |--------------------------------------------------------------------------
+        | Donor name / phone / email comes from donors table.
+        */
+        $donor = $donation?->donor;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Donated Items
+        |--------------------------------------------------------------------------
+        */
+        $donatedItems = $donation?->donationItems ?? collect();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Warehouse
+        |--------------------------------------------------------------------------
+        */
+        $warehouse = $donation?->warehouse;
+
+        return view(
+            'admin.donation_payments.show',
+            compact(
+                'donationPayment',
+                'donation',
+                'donor',
+                'donatedItems',
+                'warehouse'
+            )
+        );
+    }
+
+
+    /**
+     * Generate Donation Payment PDF.
+     */
+    public function pdf($id)
+    {
+        $donationPayment = DonationPayment::with([
+            'donation.donor',
+            'donation.warehouse',
+            'donation.donationItems.item',
+        ])->findOrFail($id);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Related Data
+        |--------------------------------------------------------------------------
+        */
+        $donation = $donationPayment->donation;
+
+        $donor = $donation?->donor;
+
+        $donatedItems = $donation?->donationItems ?? collect();
+
+        $warehouse = $donation?->warehouse;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Generate PDF
+        |--------------------------------------------------------------------------
+        */
+        $pdf = Pdf::loadView(
+            'admin.donation_payments.pdf',
+            compact(
+                'donationPayment',
+                'donation',
+                'donor',
+                'donatedItems',
+                'warehouse'
+            )
+        );
+
+        return $pdf->stream(
+            'donation-payment-' . $donationPayment->id . '.pdf'
+        );
     }
 }
+

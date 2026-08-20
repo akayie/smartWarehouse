@@ -57,8 +57,8 @@
                                 <input type="text" class="form-control" name="phone" value="{{ old('phone', Auth::user()->phone ?? '') }}" placeholder="09xxxxxxxxx" required>
                             </div>
                             <div class="col-md-12">
-                                <label class="form-label">အီးမေးလ်လိပ်စာ</label>
-                                <input type="email" class="form-control" name="email" value="{{ old('email', Auth::user()->email ?? '') }}" placeholder="example@email.com">
+                                <label class="form-label">အီးမေးလ်လိပ်စာ <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" name="email" value="{{ old('email', Auth::user()->email ?? '') }}" placeholder="example@email.com" required>
                             </div>
                         </div>
 
@@ -89,6 +89,8 @@
                                     <option value="Both" {{ old('donation_type') == 'Both' ? 'selected' : '' }}>နှစ်မျိုးလုံး (Cash + Item)</option>
                                 </select>
                             </div>
+
+                            <input type="hidden" name="donation_date" value="{{ date('Y-m-d') }}">
                         </div>
 
                         <hr class="my-4">
@@ -111,7 +113,6 @@
                                         <option value="Cash In Hand" {{ old('payment_method') == 'Cash In Hand' ? 'selected' : '' }}>Cash In Hand</option>
                                     </select>
                                 </div>
-                                <input type="hidden" name="donation_date" value="{{ date('Y-m-d') }}">
                                 <div class="col-md-6">
                                     <label class="form-label">လှူဒါန်းငွေ ပမာဏ (ကျပ်)</label>
                                     <input type="number" class="form-control" id="amount" name="amount" value="{{ old('amount') }}" min="1" step="1" placeholder="50000">
@@ -188,7 +189,7 @@
                                                 <option value="အိတ်">အိတ်</option>
                                                 <option value="ကီလို">ကီလို</option>
                                                 <option value="စုံ">စုံ</option>
-                                                <option value="ခွေ">ခွေ</option>
+                                                <option value="ခွေ">လုံး</option>
                                             </select>
                                         </div>
 

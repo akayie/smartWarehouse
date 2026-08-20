@@ -14,14 +14,13 @@ class CheckUserRole
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next, string $role = 'admin'): Response
+    public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        $roles = explode('|', $role);
-
+        // Login ဝင်ထားပြီး user role သည် ပေးပို့ထားသော roles array ထဲတွင် ပါဝင်ပါက ခွင့်ပြုမည်
         if (Auth::check() && in_array(Auth::user()->role, $roles)) {
             return $next($request);
         }
 
-        return redirect('/');
+        abort(403, 'ဤစာမျက်နှာသို့ ဝင်ရောက်ကြည့်ရှုရန် အခွင့်အရေး မရှိပါ။');
     }
 }

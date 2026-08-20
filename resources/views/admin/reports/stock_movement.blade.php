@@ -57,7 +57,7 @@
                             <th>ကုန်လှောင်ရုံ / စခန်း</th>
                             <th class="text-center" style="width: 140px;">အမျိုးအစား</th>
                             <th class="text-end" style="width: 150px;">အရေအတွက်</th>
-                            <th>ဆောင်ရွက်သူ</th>
+                            {{-- <th>ဆောင်ရွက်သူ</th> --}}
                         </tr>
                     </thead>
                     <tbody>
@@ -82,7 +82,7 @@
                                 <td class="text-end fw-bold">
                                     {{ number_format($m->quantity) }} {{ $m->item->unit ?? '' }}
                                 </td>
-                                <td>{{ $m->user->name ?? 'စနစ် (System)' }}</td>
+                                {{-- <td>{{ $m->user->name ?? 'စနစ် (System)' }}</td> --}}
                             </tr>
                         @empty
                             <tr>

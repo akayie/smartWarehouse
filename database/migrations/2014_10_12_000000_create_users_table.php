@@ -13,15 +13,28 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+
             $table->string('name');
-            $table->string('phone')->nullable(); // nullable() ထည့်ထားသဖြင့် Register လုပ်ချိန် phone မပါလည်း error မတက်တော့ပါ
+
+            $table->string('phone')->nullable();
+
             $table->string('profile')->nullable();
+
             $table->string('email')->unique();
+
             $table->timestamp('email_verified_at')->nullable();
+
             $table->string('password');
-            $table->string('role')->default('user'); // Default role ကို 'user' ဟု သတ်မှတ်ပေးထားပါသည်
+
+            $table->string('role')->default('user');
+
+            // warehouse_id has been removed from here.
+            // It will be added safely via your later migration file.
+
             $table->rememberToken();
+
             $table->softDeletes();
+
             $table->timestamps();
         });
     }

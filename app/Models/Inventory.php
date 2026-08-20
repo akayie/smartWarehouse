@@ -6,28 +6,25 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\BelongsToWarehouse;
+
 class Inventory extends Model
 {
-    use HasFactory, SoftDeletes,BelongsToWarehouse;
+    use HasFactory, SoftDeletes, BelongsToWarehouse;
 
     protected $fillable = [
         'warehouse_id',
         'item_id',
         'quantity',
-        'expiry_date', // 1. Mass assignment ပြုလုပ်နိုင်ရန် ထည့်သွင်းပေးရပါမည်
+        'reserved_quantity',
+        'expiry_date',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array
-     */
     protected $casts = [
-        'expiry_date' => 'date', // 2. Carbon instance အဖြစ် တိုက်ရိုက် သုံးနိုင်ရန် date cast လုပ်ပေးထားပါသည်
-    ];
-
+    'quantity' => 'integer',
+    'expiry_date' => 'date',
+];
     /**
-     * Inventory belongs to a Warehouse.
+     * Get the warehouse that owns the inventory.
      */
     public function warehouse()
     {
@@ -35,7 +32,7 @@ class Inventory extends Model
     }
 
     /**
-     * Inventory belongs to an Item.
+     * Get the item that owns the inventory.
      */
     public function item()
     {

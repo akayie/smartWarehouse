@@ -14,7 +14,7 @@
                         <i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>လှူဒါန်းမှု မှတ်တမ်း
                     </h2>
                     <p class="text-muted mb-0">
-                        သင်ပြုလုပ်ထားသော လှူဒါန်းမှုများ၏ အခြေအနေနှင့် အသေးစိတ်မှတ်တမ်း
+                        စနစ်အတွင်း ပြုလုပ်ထားသော လှူဒါန်းမှုများ၏ အခြေအနေနှင့် အသေးစိတ်မှတ်တမ်းများ
                     </p>
                 </div>
                 <a href="{{ route('public.donate.create') }}" class="btn btn-primary">
@@ -47,6 +47,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>လှူဒါန်းမှုအမှတ်</th>
+                            <th>လှူဒါန်းသူ</th>
                             <th>ရက်စွဲ</th>
                             <th>အမျိုးအစား</th>
                             <th>အသေးစိတ် / ငွေပေးချေမှု</th>
@@ -61,6 +62,32 @@
                                 {{-- DONATION ID --}}
                                 <td>
                                     <strong>#DON-{{ str_pad($donation->id, 4, '0', STR_PAD_LEFT) }}</strong>
+                                </td>
+
+                                {{-- DONOR NAME --}}
+                                <td>
+                                    <div class="fw-bold text-dark">
+                                        <i class="fa-solid fa-user-circle me-1 text-secondary"></i>
+                                        @php
+                                            $donor = $donation->donor;
+                                            $donorName = optional($donor)->name;
+
+                                            // အကယ်၍ အမည်မရှိပါက သို့မဟုတ် Guest အီးမေးလ်ပုံစံဖြစ်နေပါက "အများပြည်သူ (Guest)" ဟု ပြရန်
+                                            if (!$donorName || str_starts_with($donorName, 'guest_') || str_contains(optional($donor)->email, '@relief.local')) {
+                                                // Controller တွင် သိမ်းဆည်းခဲ့သော နာမည်ကို စစ်ဆေးသည်၊ မရှိလျှင် အများပြည်သူ (Guest) ဟုပြမည်
+                                                $displayDonorName = $donorName ?: 'အများပြည်သူ (Guest)';
+                                            } else {
+                                                $displayDonorName = $donorName;
+                                            }
+                                        @endphp
+                                        {{ $displayDonorName }}
+                                    </div>
+                                    @php
+                                        $phone = optional($donor)->phone;
+                                    @endphp
+                                    @if($phone)
+                                        <div class="small text-muted">{{ $phone }}</div>
+                                    @endif
                                 </td>
 
                                 {{-- DATE --}}
@@ -213,7 +240,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center py-5">
+                                <td colspan="8" class="text-center py-5">
                                     <i class="fa-solid fa-box-open fa-3x text-muted mb-3"></i>
                                     <h5>လှူဒါန်းမှု မှတ်တမ်း မရှိသေးပါ။</h5>
                                     <p class="text-muted">သင်၏ ပထမဆုံး လှူဒါန်းမှုကို ယခုစတင်နိုင်ပါသည်။</p>

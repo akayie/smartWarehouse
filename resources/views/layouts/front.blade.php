@@ -27,10 +27,10 @@
             <button class="active" onclick="window.location.href='{{ route('home') }}'">🌐 Public / အသုံးပြုသူ စာမျက်နှာ</button>
 
             @auth
-                @if(Auth::user()->role === 'admin')
-                    <button onclick="window.location.href='{{ route('backend.dashboard') }}'">🔐 စီမံခန့်ခွဲသူ / ဝန်ထမ်း စာမျက်နှာ</button>
-                @endif
-            @endauth
+    @if(in_array(Auth::user()->role, ['admin', 'manager', 'warehouse_manager']))
+        <button onclick="window.location.href='{{ route('backend.dashboard') }}'">🔐 စီမံခန့်ခွဲသူ / ဝန်ထမ်း စာမျက်နှာ</button>
+    @endif
+@endauth
         </div>
     </div>
 
@@ -40,7 +40,7 @@
         <nav class="public-navbar">
             <div class="container nav-wrap d-flex justify-content-between align-items-center py-2">
                 <a href="{{ route('home') }}" class="brand-logo text-decoration-none fw-bold fs-4">
-                    <i class="fa-solid fa-hand-holding-hand"></i> SMART RELIEF
+                    <i class="fa-solid fa-hand-holding-hand"></i> Diaster RELIEF
                 </a>
 
                 <button class="mobile-toggle d-md-none" aria-label="Toggle navigation">
@@ -52,12 +52,12 @@
                     <li><a href="{{ route('public.about') }}" class="{{ request()->routeIs('public.about') ? 'active fw-bold' : '' }}">ကျွန်ုပ်တို့အကြောင်း / ကူညီဆောင်ရွက်မှုများ</a></li>
                     <li><a href="{{ route('public.campaigns') }}" class="{{ request()->routeIs('public.campaigns') ? 'active fw-bold' : '' }}">သဘာဝဘေး ဖြစ်စဉ်များ</a></li>
 
-                    @auth
+                    {{-- @auth --}}
                         <li><a href="{{ route('public.request.create') }}" class="{{ request()->routeIs('public.request.create') ? 'active fw-bold' : '' }}">အကူအညီ တောင်းခံရန်</a></li>
                         <li><a href="{{ route('public.my-requests') }}" class="{{ request()->routeIs('public.my-requests') ? 'active fw-bold' : '' }}">ကျွန်ုပ်၏ တောင်းခံလွှာများ</a></li>
                         <li><a href="{{ route('public.donate.create') }}" class="{{ request()->routeIs('public.donate.create') ? 'active fw-bold' : '' }}">လှူဒါန်းမှု ပြုလုပ်ရန်</a></li>
                         <li><a href="{{ route('public.don-history') }}" class="{{ request()->routeIs('public.don-history') ? 'active fw-bold' : '' }}">လှူဒါန်းမှု မှတ်တမ်း</a></li>
-                    @endauth
+                    {{-- @endauth --}}
                 </ul>
 
                 <div class="nav-actions d-flex align-items-center gap-2">

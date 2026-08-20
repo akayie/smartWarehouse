@@ -39,7 +39,8 @@ class WarehouseRequest extends FormRequest
                 'max:20',
             ],
 
-            'user_id' => [
+            // 'user_id' မှ Blade ဖိုင်၏ name attribute ဖြစ်သည့် 'manager_id' သို့ ပြောင်းလဲထားပါသည်
+            'manager_id' => [
                 'nullable',
                 'exists:users,id',
             ],

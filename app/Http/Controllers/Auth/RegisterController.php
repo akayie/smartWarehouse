@@ -69,7 +69,7 @@ class RegisterController extends Controller
             'email'    => $data['email'],
             'phone'    => $data['phone'] ?? null, // phone မပါလာပါက null ဖြည့်ပေးမည် (SQL error မတက်စေရန်)
             'password' => Hash::make($data['password']),
-            'role'     => 'admin', // Register လုပ်သူတိုင်းကို Role = admin သတ်မှတ်ပေးခြင်း
+            'role'     => 'warehouse_manager', // Register လုပ်သူတိုင်းကို Role = admin သတ်မှတ်ပေးခြင်း
         ]);
     }
 }

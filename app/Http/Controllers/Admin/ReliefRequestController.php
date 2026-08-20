@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ReliefRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ReliefRequestController extends Controller
 {
@@ -14,15 +15,24 @@ class ReliefRequestController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function index()
+    public function index(Request $request)
     {
-        $reliefRequests = ReliefRequest::with([
+        $user = Auth::user();
+
+        $query = ReliefRequest::with([
             'disaster',
             'warehouse',
             'requestedBy',
-        ])
+        ]);
+
+        // Warehouse Manager / Manager / Inventory Staff
+        // မိမိ assign ဖြစ်ထားသော warehouse ကိုသာ ကြည့်နိုင်မည်
+        $this->applyWarehouseFilter($query, $user);
+
+        $reliefRequests = $query
             ->latest('id')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view(
             'admin.relief_requests.index',
@@ -39,12 +49,19 @@ class ReliefRequestController extends Controller
 
     public function show($id)
     {
-        $reliefRequest = ReliefRequest::with([
+        $user = Auth::user();
+
+        $query = ReliefRequest::with([
             'disaster',
             'warehouse',
             'requestedBy',
             'requestItems.item',
-        ])->findOrFail($id);
+        ]);
+
+        // Warehouse permission
+        $this->applyWarehouseFilter($query, $user);
+
+        $reliefRequest = $query->findOrFail($id);
 
         return view(
             'admin.relief_requests.show',
@@ -61,25 +78,69 @@ class ReliefRequestController extends Controller
 
     public function approve($id)
     {
-        $reliefRequest = ReliefRequest::findOrFail($id);
+        $user = Auth::user();
 
-        if (strtolower($reliefRequest->status) === 'approved') {
+        $query = ReliefRequest::query();
+
+        // Warehouse permission
+        $this->applyWarehouseFilter($query, $user);
+
+        $reliefRequest = $query->findOrFail($id);
+
+        $status = strtolower(
+            trim($reliefRequest->status ?? '')
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Already Approved
+        |--------------------------------------------------------------------------
+        */
+
+        if ($status === 'approved') {
             return redirect()
                 ->back()
-                ->with('error', 'ဤတောင်းခံမှုကို အတည်ပြုပြီးသားဖြစ်ပါသည်။');
+                ->with(
+                    'error',
+                    'ဤတောင်းခံမှုကို အတည်ပြုပြီးသားဖြစ်ပါသည်။'
+                );
         }
 
-        if (strtolower($reliefRequest->status) === 'rejected') {
+        /*
+        |--------------------------------------------------------------------------
+        | Already Rejected
+        |--------------------------------------------------------------------------
+        */
+
+        if ($status === 'rejected') {
             return redirect()
                 ->back()
-                ->with('error', 'ပယ်ဖျက်ပြီးသား တောင်းခံမှုကို ပြန်လည်အတည်ပြု၍ မရပါ။');
+                ->with(
+                    'error',
+                    'ပယ်ဖျက်ပြီးသား တောင်းခံမှုကို ပြန်လည်အတည်ပြု၍ မရပါ။'
+                );
         }
 
-        if (strtolower($reliefRequest->status) !== 'pending') {
+        /*
+        |--------------------------------------------------------------------------
+        | Only Pending Can Be Approved
+        |--------------------------------------------------------------------------
+        */
+
+        if ($status !== 'pending') {
             return redirect()
                 ->back()
-                ->with('error', 'လက်ရှိအခြေအနေမှ အတည်ပြု၍ မရပါ။');
+                ->with(
+                    'error',
+                    'လက်ရှိအခြေအနေမှ အတည်ပြု၍ မရပါ။'
+                );
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Status
+        |--------------------------------------------------------------------------
+        */
 
         $reliefRequest->update([
             'status' => 'Approved',
@@ -90,7 +151,10 @@ class ReliefRequestController extends Controller
                 'backend.relief_requests.show',
                 $reliefRequest->id
             )
-            ->with('success', 'ကယ်ဆယ်ရေးအကူအညီ တောင်းခံမှုကို အတည်ပြုပြီးပါပြီ။');
+            ->with(
+                'success',
+                'ကယ်ဆယ်ရေးအကူအညီ တောင်းခံမှုကို အတည်ပြုပြီးပါပြီ။'
+            );
     }
 
 
@@ -102,19 +166,88 @@ class ReliefRequestController extends Controller
 
     public function reject($id)
     {
-        $reliefRequest = ReliefRequest::findOrFail($id);
+        $user = Auth::user();
 
-        if (strtolower($reliefRequest->status) === 'rejected') {
+        $query = ReliefRequest::query();
+
+        // Warehouse permission
+        $this->applyWarehouseFilter($query, $user);
+
+        $reliefRequest = $query->findOrFail($id);
+
+        $status = strtolower(
+            trim($reliefRequest->status ?? '')
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Already Rejected
+        |--------------------------------------------------------------------------
+        */
+
+        if ($status === 'rejected') {
             return redirect()
                 ->back()
-                ->with('error', 'ဤတောင်းခံမှုကို ပယ်ဖျက်ပြီးသားဖြစ်ပါသည်။');
+                ->with(
+                    'error',
+                    'ဤတောင်းခံမှုကို ပယ်ဖျက်ပြီးသားဖြစ်ပါသည်။'
+                );
         }
 
-        if (strtolower($reliefRequest->status) === 'completed') {
+        /*
+        |--------------------------------------------------------------------------
+        | Completed Cannot Be Rejected
+        |--------------------------------------------------------------------------
+        */
+
+        if ($status === 'completed') {
             return redirect()
                 ->back()
-                ->with('error', 'ပြီးစီးပြီးသား တောင်းခံမှုကို ပယ်ဖျက်၍ မရပါ။');
+                ->with(
+                    'error',
+                    'ပြီးစီးပြီးသား တောင်းခံမှုကို ပယ်ဖျက်၍ မရပါ။'
+                );
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Approved Cannot Be Rejected
+        |--------------------------------------------------------------------------
+        |
+        | Approved ဖြစ်ပြီးသား request ကို Reject မလုပ်နိုင်အောင်
+        | ဒီနေရာမှာ တားထားပါတယ်။
+        |
+        */
+
+        if ($status === 'approved') {
+            return redirect()
+                ->back()
+                ->with(
+                    'error',
+                    'အတည်ပြုပြီးသား တောင်းခံမှုကို ပယ်ဖျက်၍ မရပါ။'
+                );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Only Pending Can Be Rejected
+        |--------------------------------------------------------------------------
+        */
+
+        if ($status !== 'pending') {
+            return redirect()
+                ->back()
+                ->with(
+                    'error',
+                    'လက်ရှိအခြေအနေမှ ပယ်ဖျက်၍ မရပါ။'
+                );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Status
+        |--------------------------------------------------------------------------
+        */
 
         $reliefRequest->update([
             'status' => 'Rejected',
@@ -125,6 +258,41 @@ class ReliefRequestController extends Controller
                 'backend.relief_requests.show',
                 $reliefRequest->id
             )
-            ->with('success', 'ကယ်ဆယ်ရေးအကူအညီ တောင်းခံမှုကို ပယ်ဖျက်ပြီးပါပြီ။');
+            ->with(
+                'success',
+                'ကယ်ဆယ်ရေးအကူအညီ တောင်းခံမှုကို ပယ်ဖျက်ပြီးပါပြီ။'
+            );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Warehouse Filter
+    |--------------------------------------------------------------------------
+    |
+    | Admin က warehouse အားလုံးကို ကြည့်နိုင်သည်။
+    |
+    | warehouse_manager / manager / inventory_staff
+    | တို့က မိမိ warehouse ကိုသာ ကြည့်နိုင်သည်။
+    |
+    */
+
+    private function applyWarehouseFilter($query, $user)
+    {
+        if (
+            in_array($user->role, [
+                'warehouse_manager',
+                'manager',
+                'inventory_staff',
+            ])
+            && $user->warehouse_id
+        ) {
+            $query->where(
+                'warehouse_id',
+                $user->warehouse_id
+            );
+        }
+
+        return $query;
     }
 }

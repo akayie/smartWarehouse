@@ -9,10 +9,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\BelongsToWarehouse;
+use Illuminate\Support\Facades\Auth;
 
 class Donation extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToWarehouse;
 
     /**
      * The attributes that are mass assignable.
@@ -40,7 +42,7 @@ class Donation extends Model
     ];
 
     /* -------------------------------------------------------------------------- */
-    /*                                RELATIONSHIPS                               */
+    /*                               RELATIONSHIPS                                */
     /* -------------------------------------------------------------------------- */
 
     /**
@@ -93,6 +95,40 @@ class Donation extends Model
     public function scopeReceived(Builder $query): Builder
     {
         return $query->where('status', 'Received');
+    }
+
+    /**
+     * Scope a query for current user's assigned warehouse (Manager & Warehouse Manager)
+     */
+    public function scopeForCurrentWarehouse(Builder $query): Builder
+    {
+        if (Auth::check()) {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+
+            // အကယ်၍ Admin (သို့) Super Admin ဖြစ်လျှင် အားလုံးကို ပြမည်
+            if (in_array($user->role, ['admin', 'super_admin'])) {
+                return $query;
+            }
+
+            // Warehouse Manager သို့မဟုတ် Manager များအတွက် ၎င်းတို့ တာဝန်ကျရာ Warehouse များအလိုက် စစ်ထုတ်ခြင်း
+            if (in_array($user->role, ['warehouse_manager', 'manager'])) {
+                // အကယ်၍ User တွင် warehouses relation ရှိပြီး Relation (Many-to-Many) သုံးထားလျှင်
+                if (method_exists($user, 'warehouses')) {
+                    $warehouseIds = $user->warehouses()->pluck('warehouses.id');
+                    if ($warehouseIds->isNotEmpty()) {
+                        return $query->whereIn('warehouse_id', $warehouseIds);
+                    }
+                }
+
+                // အကယ်၍ User table ထဲတွင် warehouse_id (Single) တိုက်ရိုက်ပါရှိနေပါက
+                if (!empty($user->warehouse_id)) {
+                    return $query->where('warehouse_id', $user->warehouse_id);
+                }
+            }
+        }
+
+        return $query;
     }
 
     /* -------------------------------------------------------------------------- */

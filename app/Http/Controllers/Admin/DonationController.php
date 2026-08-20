@@ -12,22 +12,26 @@ use App\Models\Item;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class DonationController extends Controller
 {
     /**
-     * Show admin list of donations.
-     */
-    /**
-     * Show admin list of donations.
+     * Show admin list of donations filtered by user warehouse role.
      */
     public function index()
     {
-        $donations = Donation::with(['donor', 'warehouse', 'donationItems.item', 'payment'])
-            ->latest()
-            ->paginate(10);
+        $user = Auth::user();
 
-        // 'donations.index' အစား admin folder ထည့်ပေးပါ
+        $query = Donation::with(['donor', 'warehouse', 'donationItems.item', 'payment']);
+
+        // Admin မဟုတ်ဘဲ Warehouse Manager / Manager ဖြစ်ပါက မိမိ Assign ရထားသော Warehouse စာရင်းကိုသာ ပြရန်
+        if (in_array($user->role, ['warehouse_manager', 'manager']) || $user->warehouse_id) {
+            $query->where('warehouse_id', $user->warehouse_id);
+        }
+
+        $donations = $query->latest()->paginate(10);
+
         return view('admin.donations.index', compact('donations'));
     }
 
@@ -36,11 +40,18 @@ class DonationController extends Controller
      */
     public function create()
     {
-        $warehouses = Warehouse::all();
+        $user = Auth::user();
+
+        // Warehouse Manager ဆိုပါက မိမိ တာဝန်ကျသော Warehouse တစ်ခုတည်းကိုသာ ရွေးချယ်ခွင့်ပေးရန်
+        if (in_array($user->role, ['warehouse_manager', 'manager']) || $user->warehouse_id) {
+            $warehouses = Warehouse::where('id', $user->warehouse_id)->get();
+        } else {
+            $warehouses = Warehouse::all();
+        }
+
         $categories = Category::all();
         $items      = Item::with('category')->where('status', 'active')->get();
 
-        // 'donations.create' အစား admin folder ထည့်ပေးပါ
         return view('admin.donations.create', compact('warehouses', 'categories', 'items'));
     }
 
@@ -49,6 +60,13 @@ class DonationController extends Controller
      */
     public function store(Request $request)
     {
+        $user = Auth::user();
+
+        // Security check: Manager က မိမိမဆိုင်သော warehouse_id ကို ရွေးချယ်ပြီး ပို့မရအောင် ကာကွယ်ခြင်း
+        if ((in_array($user->role, ['warehouse_manager', 'manager']) || $user->warehouse_id) && $request->warehouse_id != $user->warehouse_id) {
+            return redirect()->back()->with('error', 'သင် စီမံခွင့်မရှိသော ဂိုဒေါင်သို့ လှူဒါန်းမှု ထည့်သွင်းခွင့်မရှိပါ။');
+        }
+
         $request->validate([
             'donor_name'    => 'required|string|max:255',
             'phone'         => 'required|string|max:50',
@@ -167,58 +185,61 @@ class DonationController extends Controller
                 ->with('error', 'အမှားအယွင်းတစ်ခု ရှိနေပါသည်: ' . $e->getMessage());
         }
     }
-    /**
-     * Mark donation as received and update stock/warehouse if needed.
-     */
+
     /**
      * Mark donation as received and update stock/warehouse if needed.
      */
     public function receive($id)
-{
-    try {
-        DB::transaction(function () use ($id) {
+    {
+        try {
+            $user = Auth::user();
             $donation = Donation::with(['donationItems', 'payment'])->findOrFail($id);
 
-            // 1. Update Donation Status to Received
-            $donation->update([
-                'status' => 'Received'
-            ]);
+            // Authorization Check: မိမိ မဆိုင်သော Warehouse မှ Donation ကို လက်ခံခွင့် မပေးရန်
+            if ((in_array($user->role, ['warehouse_manager', 'manager']) || $user->warehouse_id) && $donation->warehouse_id != $user->warehouse_id) {
+                return redirect()->back()->with('error', 'ဤလှူဒါန်းမှုကို လက်ခံရန် လုပ်ပိုင်ခွင့် မရှိပါ။');
+            }
 
-            // 2. Update Payment Status if exists (ငွေသားပါရှိလျှင် Completed သို့ပြောင်းရန်)
-            if ($donation->payment) {
-                $donation->payment->update([
-                    'status' => 'Completed'
+            DB::transaction(function () use ($donation) {
+
+                // 1. Update Donation Status to Received
+                $donation->update([
+                    'status' => 'Received'
                 ]);
-            }
 
-            // 3. Update Inventory Stock (ပစ္စည်းများပါရှိလျှင် inventories table ထို့ ပမာဏနှင့် သက်တမ်းကုန်ရက် ထည့်ရန်)
-            if (in_array($donation->donation_type, ['Item', 'Both']) && $donation->donationItems->count()) {
-                foreach ($donation->donationItems as $donationItem) {
-
-                    // ပစ္စည်းတစ်ခုချင်းစီအတွက် inventories table ထဲတွင် စာရင်းထည့်ခြင်း (သို့) ပမာဏပေါင်းထည့်ခြင်း
-                    // အကယ်၍ အတူတူပင်ဖြစ်ပြီး သက်တမ်းကုန်ရက် (expiry_date) တူပါက ပမာဏပေါင်းထည့်ရန် updateOrInsert ကိုသုံးနိုင်ပါသည်
-                    \App\Models\Inventory::updateOrInsert(
-                        [
-                            'warehouse_id' => $donation->warehouse_id,
-                            'item_id'      => $donationItem->item_id,
-                            'expiry_date'  => $donationItem->expired_date, // သက်တမ်းကုန်ရက်အလိုက် ခွဲခြားသိမ်းဆည်းရန်
-                        ],
-                        [
-                            'quantity'     => DB::raw('COALESCE(quantity, 0) + ' . $donationItem->quantity),
-                            'updated_at'   => now(),
-                            'created_at'   => now(),
-                        ]
-                    );
+                // 2. Update Payment Status if exists
+                if ($donation->payment) {
+                    $donation->payment->update([
+                        'status' => 'Completed'
+                    ]);
                 }
-            }
-        });
 
-        return redirect()->back()
-            ->with('success', 'လှူဒါန်းမှုကို လက်ခံအတည်ပြုပြီး Inventory Stock နှင့် ငွေစာရင်းများကို အောင်မြင်စွာ အပ်ဒိတ်လုပ်ပြီးပါပြီ။');
+                // 3. Update Inventory Stock
+                if (in_array($donation->donation_type, ['Item', 'Both']) && $donation->donationItems->count()) {
+                    foreach ($donation->donationItems as $donationItem) {
 
-    } catch (\Exception $e) {
-        return redirect()->back()
-            ->with('error', 'အမှားအယွင်း ဖြစ်ပေါ်သွားပါသည်: ' . $e->getMessage());
+                        \App\Models\Inventory::updateOrInsert(
+                            [
+                                'warehouse_id' => $donation->warehouse_id,
+                                'item_id'      => $donationItem->item_id,
+                                'expiry_date'  => $donationItem->expired_date,
+                            ],
+                            [
+                                'quantity'     => DB::raw('COALESCE(quantity, 0) + ' . $donationItem->quantity),
+                                'updated_at'   => now(),
+                                'created_at'   => now(),
+                            ]
+                        );
+                    }
+                }
+            });
+
+            return redirect()->back()
+                ->with('success', 'လှူဒါန်းမှုကို လက်ခံအတည်ပြုပြီး Inventory Stock နှင့် ငွေစာရင်းများကို အောင်မြင်စွာ အပ်ဒိတ်လုပ်ပြီးပါပြီ။');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'အမှားအယွင်း ဖြစ်ပေါ်သွားပါသည်: ' . $e->getMessage());
+        }
     }
-}
 }

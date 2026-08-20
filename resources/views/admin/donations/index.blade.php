@@ -52,6 +52,15 @@
                 </thead>
 
                 <tbody>
+                    @php
+                        // လက်ခံပြီး (Received) ဖြစ်ပြီး ငွေပါဝင်သော လှူဒါန်းမှုများ၏ ပမာဏကို စုစုပေါင်းပေါင်းရန်
+                        $pageReceivedCashSum = $donations->filter(function($donation) {
+                            return $donation->status === 'Received' && in_array($donation->donation_type, ['Cash', 'Both']) && $donation->payment;
+                        })->sum(function($donation) {
+                            return $donation->payment->amount;
+                        });
+                    @endphp
+
                     @forelse($donations as $donation)
                         <tr>
                             {{-- Number --}}
@@ -169,6 +178,20 @@
                         </tr>
                     @endforelse
                 </tbody>
+
+                {{-- Table Footer for Total Amount Row --}}
+                @if($donations->isNotEmpty())
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="3" class="text-end fw-bold text-dark">
+                                စုစုပေါင်း (လက်ခံပြီး ငွေပမာဏ):
+                            </td>
+                            <td colspan="3" class="fw-bold text-success">
+                                {{ number_format($pageReceivedCashSum) }} MMK
+                            </td>
+                        </tr>
+                    </tfoot>
+                @endif
             </table>
         </div>
 

@@ -1,352 +1,671 @@
 @extends('layouts.admin')
 
-@section('title')
-    အလှူငွေပေးချေမှု အသေးစိတ်
-@endsection
+@section('title', 'လှူဒါန်းမှုဆိုင်ရာ မှတ်ချက်စာ')
 
 @section('button')
 
 <a
     href="{{ route('backend.donation_payments.index') }}"
-    class="btn btn-secondary">
+    class="btn btn-secondary me-2">
 
     <i class="fas fa-arrow-left me-1"></i>
     နောက်သို့
 
 </a>
 
+<a
+    href="{{ route('backend.donation_payments.pdf', $donationPayment->id) }}"
+    target="_blank"
+    class="btn btn-danger">
+
+    <i class="fas fa-file-pdf me-1"></i>
+    PDF ထုတ်ရန်
+
+</a>
+
 @endsection
+
 
 @section('content')
 
-<div class="card shadow-sm border-0">
+<div class="container-fluid py-4">
 
-    <div class="card-header bg-white">
+    {{-- =========================================================
+        REMARK LETTER
+    ========================================================== --}}
 
-        <h4 class="mb-0 fw-bold text-primary">
+    <div class="card shadow-sm border-0">
 
-            <i class="fas fa-money-check-alt me-2"></i>
-            အလှူငွေပေးချေမှု အသေးစိတ်
+        <div class="card-body p-5">
 
-        </h4>
+            {{-- HEADER --}}
 
-    </div>
+            <div class="text-center mb-4">
 
-    <div class="card-body">
+                <h2 class="fw-bold">
+                    SmartWarehouse
+                </h2>
 
-        <table class="table table-bordered align-middle">
+                <h4 class="fw-bold mt-3">
+                    လှူဒါန်းမှုဆိုင်ရာ မှတ်ချက်စာ
+                </h4>
 
-            {{-- Payment ID --}}
-            <tr>
+                <p class="text-muted mb-0">
+                    Donation Remark Letter
+                </p>
 
-                <th width="220" class="bg-light">
-                    ငွေပေးချေမှု အမှတ်
-                </th>
+            </div>
 
-                <td>
-                    <span class="badge bg-primary">
-                        #{{ $donationPayment->id }}
-                    </span>
-                </td>
 
-            </tr>
+            {{-- DATE --}}
 
-            {{-- Donation Money ID --}}
-            <tr>
+            <div class="mb-3">
 
-                <th class="bg-light">
-                    အလှူငွေမှတ်တမ်း အမှတ်
-                </th>
+                <strong>
+                    ရက်စွဲ (Date):
+                </strong>
 
-                <td>
-                    #{{ $donationPayment->donation_money_id }}
-                </td>
+                {{ optional($donationPayment->payment_date)
+                    ->format('Y ခုနှစ်၊ m လ d ရက်') }}
 
-            </tr>
+            </div>
 
-            {{-- Donor --}}
-            <tr>
 
-                <th class="bg-light">
-                    အလှူရှင်အမည်
-                </th>
+            {{-- SUBJECT --}}
 
-                <td>
+            <div class="mb-4">
 
-                    <strong>
-                        {{ $donationPayment
-                            ->donationMoney
-                            ->donation
-                            ->donor
-                            ->name ?? 'မသိရှိပါ' }}
-                    </strong>
+                <strong>
+                    အကြောင်းအရာ (Subject):
+                </strong>
 
-                </td>
+                လှူဒါန်းမှုဆိုင်ရာ မှတ်တမ်းနှင့် ကျေးဇူးတင်စကား
 
-            </tr>
+            </div>
 
-            {{-- Payment Method --}}
-            <tr>
 
-                <th class="bg-light">
-                    ငွေပေးချေမှုနည်းလမ်း
-                </th>
+            {{-- =================================================
+                1. OVERVIEW
+            ================================================== --}}
 
-                <td>
+            <h5 class="fw-bold text-primary mt-4">
+                ၁။ ခြုံငုံသုံးသပ်ချက် (Overview)
+            </h5>
 
-                    @if($donationPayment->payment_method)
+            <p class="lh-lg">
 
-                        <span class="badge bg-info text-dark">
-                            {{ $donationPayment->payment_method }}
+                စေတနာရှင်
+                <strong>
+                    {{ $donor->name ?? 'မသိရှိပါ' }}
+                </strong>
+                မှ SmartWarehouse စနစ်မှတစ်ဆင့်
+                သဘာဝဘေးအန္တရာယ်ခံစားနေရသော ပြည်သူများအတွက်
+                လှူဒါန်းခဲ့သည့် ပစ္စည်းနှင့် ငွေကြေးများကို
+                အောက်ပါအတိုင်း မှတ်တမ်းတင်အပ်ပါသည်။
+
+            </p>
+
+
+            {{-- =================================================
+                2. DONOR INFORMATION
+            ================================================== --}}
+
+            <h5 class="fw-bold text-primary mt-4">
+                ၂။ လှူဒါန်းသူအချက်အလက် (Donor Information)
+            </h5>
+
+            <table class="table table-bordered">
+
+                <tr>
+                    <th width="35%">စဉ်</th>
+                    <th>အချက်အလက်</th>
+                    <th>အသေးစိတ်</th>
+                </tr>
+
+                <tr>
+                    <td>၁</td>
+                    <td>အမည်</td>
+                    <td>
+                        {{ $donor->name ?? 'မသိရှိပါ' }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>၂</td>
+                    <td>ဖုန်းနံပါတ်</td>
+                    <td>
+                        {{ $donor->phone ?? '-' }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>၃</td>
+                    <td>အီးမေးလ်</td>
+                    <td>
+                        {{ $donor->email ?? '-' }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>၄</td>
+                    <td>လှူဒါန်းသည့်နေ့</td>
+                    <td>
+                        {{ optional($donationPayment->payment_date)
+                            ->format('Y-m-d') }}
+                    </td>
+                </tr>
+
+            </table>
+
+
+            {{-- =================================================
+                3. DONATED ITEMS
+            ================================================== --}}
+
+            <h5 class="fw-bold text-primary mt-4">
+                ၃။ လှူဒါန်းထားသော ပစ္စည်းစာရင်း (Donated Items List)
+            </h5>
+
+            <table class="table table-bordered">
+
+                <thead class="table-light">
+
+                    <tr>
+                        <th>စဉ်</th>
+                        <th>ပစ္စည်းအမည်</th>
+                        <th>အရေအတွက်</th>
+                        <th>ယူနစ်</th>
+                        <th>သိုလှောင်ရုံ</th>
+                        <th>မှတ်ချက်</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    @forelse($donatedItems as $index => $donationItem)
+
+                        <tr>
+
+                            <td>
+                                {{ $index + 1 }}
+                            </td>
+
+                            <td>
+                                {{ optional($donationItem->item)->name ?? '-' }}
+                            </td>
+
+                            <td>
+                                {{ number_format(
+                                    $donationItem->quantity ?? 0
+                                ) }}
+                            </td>
+
+                            <td>
+                                {{ optional($donationItem->item)->unit ?? '-' }}
+                            </td>
+
+                            <td>
+                                {{ optional($warehouse)->name ?? '-' }}
+                            </td>
+
+                            <td>
+                                <span class="badge bg-success">
+                                    လက်ခံရရှိပြီး
+                                </span>
+                            </td>
+
+                        </tr>
+
+                    @empty
+
+                        <tr>
+
+                            <td
+                                colspan="6"
+                                class="text-center text-muted">
+
+                                ဤလှူဒါန်းမှုတွင်
+                                ပစ္စည်းလှူဒါန်းမှု မရှိပါ။
+
+                            </td>
+
+                        </tr>
+
+                    @endforelse
+
+                </tbody>
+
+            </table>
+
+
+            {{-- =================================================
+                4. MONETARY DONATION
+            ================================================== --}}
+
+            <h5 class="fw-bold text-primary mt-4">
+                ၄။ ငွေကြေးလှူဒါန်းမှု အချက်အလက်
+                (Monetary Donation Details)
+            </h5>
+
+            <table class="table table-bordered">
+
+                <tr>
+                    <th width="35%">စဉ်</th>
+                    <th>အချက်အလက်</th>
+                    <th>အသေးစိတ်</th>
+                </tr>
+
+                <tr>
+                    <td>၁</td>
+                    <td>ငွေပမာဏ</td>
+                    <td>
+                        <strong class="text-success">
+
+                            {{ number_format(
+                                $donationPayment->amount ?? 0,
+                                0
+                            ) }}
+
+                            {{ $donationMoney->currency ?? 'MMK' }}
+
+                        </strong>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>၂</td>
+                    <td>ငွေပေးချေနည်း</td>
+                    <td>
+                        {{ $donationPayment->payment_method ?? '-' }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>၃</td>
+                    <td>ငွေလွှဲအကိုးအကား</td>
+                    <td>
+                        {{ $donationPayment->transaction_reference ?? '-' }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>၄</td>
+                    <td>ငွေပေးချေသည့်နေ့</td>
+                    <td>
+                        {{ optional($donationPayment->payment_date)
+                            ->format('Y-m-d') }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>၅</td>
+                    <td>အခြေအနေ</td>
+                    <td>
+
+                        @if($donationPayment->status === 'Completed')
+
+                            <span class="badge bg-success">
+                                ပြီးစီး (Completed)
+                            </span>
+
+                        @elseif($donationPayment->status === 'Pending')
+
+                            <span class="badge bg-warning text-dark">
+                                စောင့်ဆိုင်းဆဲ (Pending)
+                            </span>
+
+                        @elseif($donationPayment->status === 'Failed')
+
+                            <span class="badge bg-danger">
+                                မအောင်မြင် (Failed)
+                            </span>
+
+                        @else
+
+                            <span class="badge bg-secondary">
+                                {{ $donationPayment->status }}
+                            </span>
+
+                        @endif
+
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>၆</td>
+                    <td>ငွေလွှဲအထောက်အထား</td>
+                    <td>
+
+                        @if($donationPayment->proof)
+
+                            <a
+                                href="{{ asset(
+                                    'storage/' . $donationPayment->proof
+                                ) }}"
+                                target="_blank">
+
+                                ပူးတွဲပါရှိ
+                                (Payment Proof)
+
+                            </a>
+
+                        @else
+
+                            မပါရှိပါ
+
+                        @endif
+
+                    </td>
+                </tr>
+
+            </table>
+
+
+            {{-- =================================================
+                5. CURRENT STATUS
+            ================================================== --}}
+
+            <h5 class="fw-bold text-primary mt-4">
+                ၅။ လက်ရှိအခြေအနေ (Current Status)
+            </h5>
+
+            <table class="table table-bordered">
+
+                <tr>
+
+                    <th width="35%">
+                        လှူဒါန်းမှုအခြေအနေ
+                    </th>
+
+                    <td>
+                        <span class="badge bg-success">
+                            Received (လက်ခံရရှိပြီး)
                         </span>
+                    </td>
 
-                    @else
+                </tr>
 
-                        -
+                <tr>
 
-                    @endif
+                    <th>
+                        ပစ္စည်းသိုလှောင်မှု
+                    </th>
 
-                </td>
+                    <td>
+                        {{ $warehouse->name ?? 'သိုလှောင်ရုံ မသတ်မှတ်ရသေးပါ' }}
+                        တွင် သိမ်းဆည်းထားရှိ
+                    </td>
 
-            </tr>
+                </tr>
 
-            {{-- Transaction Reference --}}
-            <tr>
+                <tr>
 
-                <th class="bg-light">
-                    ငွေလွှဲမှတ်တမ်းအမှတ်
-                </th>
+                    <th>
+                        ငွေကြေးအခြေအနေ
+                    </th>
 
-                <td>
-                    {{ $donationPayment->transaction_reference ?? '-' }}
-                </td>
+                    <td>
 
-            </tr>
+                        @if($donationPayment->status === 'Completed')
 
-            {{-- Payment Date --}}
-            <tr>
+                            အကောင့်သို့ ရောက်ရှိပြီး
 
-                <th class="bg-light">
-                    ငွေပေးချေသည့်နေ့
-                </th>
+                        @else
 
-                <td>
+                            {{ $donationPayment->status }}
 
-                    {{ $donationPayment->payment_date
-                        ? $donationPayment->payment_date->format('d-m-Y')
-                        : '-' }}
+                        @endif
 
-                </td>
+                    </td>
 
-            </tr>
+                </tr>
 
-            {{-- Account Name --}}
-            <tr>
+            </table>
 
-                <th class="bg-light">
-                    အကောင့်အမည်
-                </th>
 
-                <td>
-                    {{ $donationPayment->account_name ?? '-' }}
-                </td>
+            {{-- =================================================
+                6. REMARKS
+            ================================================== --}}
 
-            </tr>
+            <h5 class="fw-bold text-primary mt-4">
+                ၆။ မှတ်ချက်/အကြံပြုချက်
+                (Remarks/Suggestions)
+            </h5>
 
-            {{-- Account Number --}}
-            <tr>
+            <ol class="lh-lg">
 
-                <th class="bg-light">
-                    အကောင့်နံပါတ်
-                </th>
+                <li>
+                    <strong>ကျေးဇူးတင်စကား</strong> -
+                    {{ $donor->name ?? 'လှူဒါန်းသူ' }}
+                    အား ၎င်း၏ ရက်ရောသော လှူဒါန်းမှုအတွက်
+                    အထူးကျေးဇူးတင်ရှိပါသည်။
+                    ဤလှူဒါန်းမှုသည် ဘေးအန္တရာယ်ခံစားနေရသော
+                    ပြည်သူများအတွက် အထူးအရေးပါသော
+                    အထောက်အပံ့ဖြစ်ပါသည်။
+                </li>
 
-                <td>
-                    {{ $donationPayment->account_number ?? '-' }}
-                </td>
+                <li>
+                    <strong>ပစ္စည်းအရည်အသွေး</strong> -
+                    လှူဒါန်းထားသော ပစ္စည်းများသည်
+                    အရည်အသွေးကောင်းမွန်ပြီး
+                    သတ်မှတ်စံချိန်စံညွှန်းများနှင့်
+                    ကိုက်ညီပါသည်။
+                </li>
 
-            </tr>
+                <li>
+                    <strong>ငွေကြေးအသုံးပြုမှု</strong> -
+                    လှူဒါန်းထားသော ငွေကြေးကို
+                    ဘေးအန္တရာယ်ခံစားနေရသော ပြည်သူများအတွက်
+                    လိုအပ်သော ပစ္စည်းများ ထပ်မံဝယ်ယူရာတွင်
+                    အသုံးပြုသွားမည်ဖြစ်ပါသည်။
+                </li>
 
-            {{-- Amount --}}
-            <tr>
+                <li>
+                    <strong>ဆက်လက်ဆောင်ရွက်ရန်</strong> -
+                    လှူဒါန်းထားသော ပစ္စည်းများကို
+                    လိုအပ်သည့်ဒေသများသို့ အမြန်ဆုံး
+                    ဖြန့်ဝေနိုင်ရေး ဆောင်ရွက်သွားမည်ဖြစ်ပါသည်။
+                </li>
 
-                <th class="bg-light">
-                    အလှူငွေပမာဏ
-                </th>
+                <li>
+                    <strong>အစီရင်ခံတင်ပြခြင်း</strong> -
+                    လှူဒါန်းသူအား ပစ္စည်းများ မည်သို့
+                    အသုံးပြုခဲ့ကြောင်း အစီရင်ခံစာ
+                    ပြန်လည်တင်ပြသွားမည်ဖြစ်ပါသည်။
+                </li>
 
-                <td>
+            </ol>
 
-                    <strong class="text-success fs-5">
 
-                        {{ number_format(
-                            $donationPayment->amount,
-                            2
-                        ) }}
+            {{-- =================================================
+                7. CONCLUSION
+            ================================================== --}}
 
-                        {{ $donationPayment
-                            ->donationMoney
-                            ->currency ?? '' }}
+            <h5 class="fw-bold text-primary mt-4">
+                ၇။ နိဂုံး (Conclusion)
+            </h5>
 
-                    </strong>
+            <p class="lh-lg">
 
-                </td>
+                စေတနာရှင်
+                <strong>
+                    {{ $donor->name ?? 'လှူဒါန်းသူ' }}
+                </strong>
+                မှ လှူဒါန်းခဲ့သော ပစ္စည်းများနှင့်
+                ငွေကျပ်
+                <strong>
+                    {{ number_format(
+                        $donationPayment->amount ?? 0,
+                        0
+                    ) }}
+                </strong>
+                တို့ကို စနစ်တွင် မှတ်တမ်းတင်ထားရှိပြီးဖြစ်ပါသည်။
 
-            </tr>
+                ဤလှူဒါန်းမှုများကို
+                ဘေးအန္တရာယ်ခံစားနေရသော ပြည်သူများအတွက်
+                ထိရောက်စွာ အသုံးပြုသွားမည်ဖြစ်ပါသည်။
 
-            {{-- Payment Proof --}}
-            <tr>
+            </p>
 
-                <th class="bg-light">
-                    ငွေပေးချေမှု အထောက်အထား
-                </th>
 
-                <td>
+            {{-- =================================================
+                SIGNATURE
+            ================================================== --}}
 
-                    @if($donationPayment->proof)
+            <div class="row mt-5 pt-4">
 
-                        <a
-                            href="{{ asset(
-                                'storage/' . $donationPayment->proof
-                            ) }}"
-                            target="_blank"
-                            class="btn btn-sm btn-info">
+                <div class="col-md-6">
 
-                            <i class="fas fa-file-image me-1"></i>
-                            အထောက်အထားကြည့်ရန်
+                    <h6 class="fw-bold">
+                        ပြုစုသူ
+                    </h6>
 
-                        </a>
+                    <br>
 
-                    @else
 
-                        <span class="text-muted">
-                            အထောက်အထား မတင်ထားပါ။
-                        </span>
+                    <p>
+                        အမည်:
+                        <strong>Akayie</strong>
+                    </p>
 
-                    @endif
+                    <p>
+                        ရာထူး:
+                        စီမံခန့်ခွဲရေးမှူး (Admin)
+                    </p>
 
-                </td>
+                    <p>
+                        ဌာန:
+                        SmartWarehouse စီမံခန့်ခွဲရေးဌာန
+                    </p>
 
-            </tr>
+                    <p>
+                        ဖုန်း:
+                        09950371675
+                    </p>
 
-            {{-- Status --}}
-            <tr>
+                </div>
 
-                <th class="bg-light">
-                    ငွေပေးချေမှု အခြေအနေ
-                </th>
 
-                <td>
+                <div class="col-md-6">
 
-                    @if($donationPayment->status === 'Completed')
+                    <h6 class="fw-bold">
+                        အတည်ပြုသူ
+                    </h6>
 
-                        <span class="badge bg-success px-3 py-2">
+                    <br>
 
-                            <i class="fas fa-check-circle me-1"></i>
-                            ပြီးမြောက်ပြီး
 
-                        </span>
+                    <p>
+                        အမည်:
+                        <strong>Yamin</strong>
+                    </p>
 
-                    @elseif($donationPayment->status === 'Pending')
+                    <p>
+                        ရာထူး:
+                        သိုလှောင်ရုံမန်နေဂျာ
+                    </p>
 
-                        <span class="badge bg-warning text-dark px-3 py-2">
+                    <p>
+                        ဌာန:
+                        {{ $warehouse->name ?? '-' }}
+                    </p>
 
-                            <i class="fas fa-clock me-1"></i>
-                            စောင့်ဆိုင်းဆဲ
+                    <p>
+                        ဖုန်း:
+                        09950371673
+                    </p>
 
-                        </span>
+                </div>
 
-                    @elseif($donationPayment->status === 'Failed')
+            </div>
 
-                        <span class="badge bg-danger px-3 py-2">
 
-                            <i class="fas fa-times-circle me-1"></i>
-                            မအောင်မြင်ပါ
+            {{-- =================================================
+                ATTACHMENTS
+            ================================================== --}}
 
-                        </span>
+            <div class="mt-5 pt-4 border-top">
 
-                    @else
+                <h5 class="fw-bold text-primary">
+                    📎 တွဲဖက်တင်ပြသည့် အချက်အလက်များ
+                    (Attachments)
+                </h5>
 
-                        <span class="badge bg-secondary px-3 py-2">
+                <ol>
 
-                            <i class="fas fa-ban me-1"></i>
-                            ပယ်ဖျက်ပြီး
+                    <li>
 
-                        </span>
+                        @if($donationPayment->proof)
 
-                    @endif
+                            <a
+                                href="{{ asset(
+                                    'storage/' . $donationPayment->proof
+                                ) }}"
+                                target="_blank">
 
-                </td>
+                                ငွေလွှဲအထောက်အထား
 
-            </tr>
+                            </a>
 
-            {{-- Note --}}
-            <tr>
+                        @else
 
-                <th class="bg-light">
-                    မှတ်ချက်
-                </th>
+                            ငွေလွှဲအထောက်အထား မပါရှိပါ။
 
-                <td>
-                    {{ $donationPayment->note ?? 'မှတ်ချက်မရှိပါ။' }}
-                </td>
+                        @endif
 
-            </tr>
+                    </li>
 
-            {{-- Created At --}}
-            <tr>
+                    <li>
+                        လှူဒါန်းမှုလက်ခံဖြတ်ပိုင်း
+                    </li>
 
-                <th class="bg-light">
-                    မှတ်တမ်းတင်သည့်အချိန်
-                </th>
+                </ol>
 
-                <td>
+            </div>
 
-                    {{ $donationPayment->created_at
-                        ? $donationPayment->created_at->format('d-m-Y H:i:s')
-                        : '-' }}
 
-                </td>
+            {{-- =================================================
+                BOTTOM BUTTONS
+            ================================================== --}}
 
-            </tr>
+            <div class="mt-5 pt-4 border-top text-center">
 
-            {{-- Updated At --}}
-            <tr>
+                <a
+                    href="{{ route('backend.donation_payments.index') }}"
+                    class="btn btn-secondary me-2">
 
-                <th class="bg-light">
-                    နောက်ဆုံးပြင်ဆင်သည့်အချိန်
-                </th>
+                    <i class="fas fa-arrow-left me-1"></i>
+                    စာရင်းသို့ ပြန်သွားရန်
 
-                <td>
+                </a>
 
-                    {{ $donationPayment->updated_at
-                        ? $donationPayment->updated_at->format('d-m-Y H:i:s')
-                        : '-' }}
+                <a
+                    href="{{ route(
+                        'backend.donation_payments.edit',
+                        $donationPayment->id
+                    ) }}"
+                    class="btn btn-warning text-white me-2">
 
-                </td>
+                    <i class="fas fa-edit me-1"></i>
+                    ပြင်ဆင်ရန်
 
-            </tr>
+                </a>
 
-        </table>
+                <a
+                    href="{{ route(
+                        'backend.donation_payments.pdf',
+                        $donationPayment->id
+                    ) }}"
+                    target="_blank"
+                    class="btn btn-danger">
 
-        {{-- Bottom Action --}}
-        <div class="mt-4 pt-3 border-top">
+                    <i class="fas fa-file-pdf me-1"></i>
+                    PDF ထုတ်ရန်
 
-            <a
-                href="{{ route('backend.donation_payments.index') }}"
-                class="btn btn-secondary">
+                </a>
 
-                <i class="fas fa-arrow-left me-1"></i>
-                အလှူငွေပေးချေမှုစာရင်းသို့ ပြန်သွားရန်
-
-            </a>
-
-            <a
-                href="{{ route('backend.donation_payments.edit', $donationPayment->id) }}"
-                class="btn btn-warning text-white">
-
-                <i class="fas fa-edit me-1"></i>
-                ပြင်ဆင်ရန်
-
-            </a>
+            </div>
 
         </div>
 

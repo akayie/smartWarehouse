@@ -160,7 +160,16 @@
                 </thead>
 
                 <tbody>
+                    @php
+                        $filteredCompletedSum = 0;
+                    @endphp
+
                     @forelse($donationPayments as $payment)
+                        @php
+                            if ($payment->status === 'Completed') {
+                                $filteredCompletedSum += $payment->amount;
+                            }
+                        @endphp
                         <tr>
                             {{-- Number --}}
                             <td class="text-center">
@@ -260,17 +269,17 @@
                                     <a href="{{ route('backend.donation_payments.show', $payment->id) }}"
                                        class="btn btn-outline-info"
                                        title="အသေးစိတ်ကြည့်ရန်">
-                                        <i class="fas fa-eye"></i>
+                                        View
                                     </a>
 
-                                    {{-- Edit --}}
+                                    {{-- Edit
                                     <a href="{{ route('backend.donation_payments.edit', $payment->id) }}"
                                        class="btn btn-outline-warning"
                                        title="ပြင်ဆင်ရန်">
                                         <i class="fas fa-edit"></i>
-                                    </a>
+                                    </a> --}}
 
-                                    {{-- Delete --}}
+                                    {{-- Delete
                                     <form action="{{ route('backend.donation_payments.destroy', $payment->id) }}"
                                           method="POST"
                                           class="d-inline"
@@ -282,7 +291,7 @@
                                                 title="ဖျက်ရန်">
                                             <i class="fas fa-trash"></i>
                                         </button>
-                                    </form>
+                                    </form> --}}
                                 </div>
                             </td>
                         </tr>
@@ -300,6 +309,22 @@
                         </tr>
                     @endforelse
                 </tbody>
+
+                {{-- Table Footer for Total Amount (ပြီးစီးပြီး status တွေရဲ့ sum) --}}
+                @if($donationPayments->isNotEmpty())
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="6" class="text-end fw-bold text-dark">
+                                ပြီးစီးပြီး စုစုပေါင်း ပမာဏ (Current Page Total):
+                            </td>
+                            <td class="text-end fw-bold text-success fs-6">
+                                {{ number_format($filteredCompletedSum, 2) }} MMK
+                            </td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                @endif
+
             </table>
         </div>
 

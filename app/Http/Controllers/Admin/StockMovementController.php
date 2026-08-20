@@ -24,11 +24,12 @@ class StockMovementController extends Controller
     }
 
     /**
-     * Display Resources / Movement History
+     * Display Resources / Movement History (Warehouse အလိုက် စစ်ထုတ်ပေးခြင်း)
      */
-    public function index()
+    public function index(Request $request)
     {
         $movements = StockMovement::with(['item', 'warehouse', 'creator'])
+            ->forCurrentWarehouse() // <--- Warehouse Manager / Manager များအတွက် အလိုအလျောက် စစ်ထုတ်ပေးသည်
             ->latest()
             ->paginate(15);
 
@@ -92,9 +93,14 @@ class StockMovementController extends Controller
                         ]);
                     }
 
-                    // 3. DonationPayment ၏ amount ဇယားထဲမှ စုစုပေါင်း amount ကို နှုတ်ရန်
+                    // 3. Stock In ဝင်လာသည့် Warehouse နှင့် သက်ဆိုင်သော DonationPayment များကိုသာ
+                    // အရင်ဆုံး စစ်ထုတ်ပြီးမှ အဟောင်းဆုံးရက်စွဲအလိုက် amount များကို လျော့ချရန် (FIFO)
                     $remainingAmountToDeduct = $amount;
+
                     $payments = DonationPayment::where('amount', '>', 0)
+                        ->whereHas('donation', function ($query) use ($warehouseId) {
+                            $query->where('warehouse_id', $warehouseId);
+                        })
                         ->orderBy('payment_date', 'asc')
                         ->get();
 
@@ -158,6 +164,24 @@ class StockMovementController extends Controller
             ], 400);
         }
     }
+
+    /**
+     * QR / Barcode Scanner မျက်နှာပြင်ကို ပြသရန်
+     */
+    public function qrScannerIndex()
+    {
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+
+        if (in_array($user->role, ['admin', 'super_admin'])) {
+            $warehouses = Warehouse::all();
+        } else {
+            // Warehouse Manager များအတွက် ၎င်းတို့ပိုင်ဆိုင်သော Warehouse များသာ
+            $warehouses = method_exists($user, 'warehouses')
+                ? $user->warehouses
+                : Warehouse::where('id', $user->warehouse_id)->get();
+        }
+
+        return view('admin.stock_movements.scanner', compact('warehouses'));
+    }
 }
-
-

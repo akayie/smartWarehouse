@@ -11,7 +11,7 @@ class DonorController extends Controller
     /**
      * Display a listing of donors with search filter.
      */
-    public function index(Request $request)
+   public function index(Request $request)
     {
         // 1. Query စတင်တည်ဆောက်ပါ
         $query = Donor::query();
@@ -27,10 +27,10 @@ class DonorController extends Controller
             });
         }
 
-        // 3. Optional: Donation ခဲ့ဖူးသည့် Total Count သို့မဟုတ် Total Amount ကိုပါ ထုတ်ယူချင်ပါက withCount သုံးနိုင်ပါသည်
+        // 3. Donations အရေအတွက်ကိုသာ ယူမည် (amount ကော်လံမရှိတော့သဖြင့် ဖြုတ်ထားသည်)
         $query->withCount('donations');
 
-        // 4. Pagination ပြုလုပ်ပြီး View သို့ ပို့ပေးပါ (Filter query များ URL တွင် ကျန်ခဲ့စေရန် appends သုံးထားသည်)
+        // 4. Pagination ပြုလုပ်ပြီး View သို့ ပို့ပေးပါ
         $donors = $query->latest('id')
             ->paginate(15)
             ->appends($request->all());

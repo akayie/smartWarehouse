@@ -11,18 +11,19 @@
             </h4>
             <p class="text-muted small mb-3">သိုလှောင်ရုံအလိုက် ကုန်ပစ္စည်း အဝင်/အထွက် စာရင်းသွင်းခြင်း</p>
 
-            <!-- Warehouse Dropdown -->
+           <!-- Warehouse Dropdown -->
             <div class="mb-3 text-start">
                 <label for="warehouse_id" class="form-label fw-semibold">
                     <i class="fas fa-warehouse me-1"></i> သိုလှောင်ရုံ (Warehouse)
                 </label>
                 <select id="warehouse_id" class="form-select border-primary fw-bold">
                     @foreach($warehouses as $wh)
-                        <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                        <option value="{{ $wh->id }}" {{ (auth()->user()->warehouse_id == $wh->id) ? 'selected' : '' }}>
+                            {{ $wh->name }}
+                        </option>
                     @endforeach
                 </select>
             </div>
-
             <!-- Manual Barcode Input -->
             <div class="mb-3 text-start">
                 <label for="manual_barcode_input" class="form-label fw-semibold">

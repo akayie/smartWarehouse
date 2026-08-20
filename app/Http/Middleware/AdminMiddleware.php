@@ -16,12 +16,14 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // User သည် Login ဝင်ထားပြီး role က 'admin' ဖြစ်မှ ပေးဝင်မည်
-        if (Auth::check() && Auth::user()->role === 'admin') {
+        // Admin, Warehouse Manager သို့မဟုတ် Manager ဖြစ်ပါက ခွင့်ပြုမည်
+        $allowedRoles = ['admin', 'warehouse_manager', 'manager'];
+
+        if (Auth::check() && in_array(Auth::user()->role, $allowedRoles)) {
             return $next($request);
         }
 
-        // Admin မဟုတ်ပါက Home သို့ ပြန်ညွှန်းမည်
-        return redirect('/')->with('error', 'Access denied! Admin only.');
+        // ခွင့်ပြုချက်မရှိပါက Home သို့ ပြန်ညွှန်းမည်
+        return redirect('/')->with('error', 'Access denied! Authorized staff only.');
     }
 }

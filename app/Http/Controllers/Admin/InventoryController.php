@@ -3,106 +3,320 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Inventory;
-use App\Models\Warehouse;
-use App\Models\Item;
 use App\Http\Requests\InventoryRequest;
+use App\Models\Inventory;
+use App\Models\Item;
+use App\Models\Warehouse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 class InventoryController extends Controller
 {
     /**
-     * Display a listing of the inventories.
+     * Constructor
      */
-    public function index()
+    public function __construct()
     {
-        // Global Scope ကြောင့် Manager ဖြစ်ပါက သူ၏ Warehouse Data သာ ထွက်လာမည်။
-        $inventories = Inventory::with([
-                'warehouse',
-                'item'
-            ])
-            ->orderBy('id', 'DESC')
-            ->paginate(15);
+        $this->middleware([
+            'auth',
+            'role:admin,warehouse_manager,manager'
+        ]);
+    }
+
+    /**
+     * Display inventory list.
+     */
+    public function index(Request $request): View
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        $query = Inventory::with([
+            'warehouse',
+            'item.category',
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Warehouse Manager / Manager
+        |--------------------------------------------------------------------------
+        | Only show assigned warehouse inventory.
+        |--------------------------------------------------------------------------
+        */
+        if (
+            $user &&
+            in_array($user->role, ['warehouse_manager', 'manager'])
+        ) {
+            if (!$user->warehouse_id) {
+                abort(
+                    403,
+                    'သင့်ထံတွင် Warehouse Assign လုပ်ထားခြင်းမရှိပါ။'
+                );
+            }
+
+            $query->where(
+                'warehouse_id',
+                $user->warehouse_id
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Search
+        |--------------------------------------------------------------------------
+        | Search by item name or barcode.
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('search')) {
+
+            $search = trim($request->search);
+
+            $query->whereHas('item', function ($q) use ($search) {
+
+                $q->where(
+                    'name',
+                    'like',
+                    "%{$search}%"
+                )
+                ->orWhere(
+                    'barcode',
+                    'like',
+                    "%{$search}%"
+                );
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Warehouse Filter
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('warehouse_id')) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Manager cannot filter another warehouse.
+            |--------------------------------------------------------------------------
+            */
+            if (
+                in_array(
+                    $user->role,
+                    ['warehouse_manager', 'manager']
+                )
+            ) {
+
+                if (
+                    (int) $request->warehouse_id
+                    !==
+                    (int) $user->warehouse_id
+                ) {
+                    abort(
+                        403,
+                        'အခြား Warehouse ၏ Inventory ကို ကြည့်ရှုခွင့်မရှိပါ။'
+                    );
+                }
+            }
+
+            $query->where(
+                'warehouse_id',
+                $request->warehouse_id
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Expiry Status Filter
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('status')) {
+
+            if ($request->status === 'expired') {
+
+                $query->whereNotNull('expiry_date')
+                    ->whereDate(
+                        'expiry_date',
+                        '<',
+                        today()
+                    );
+
+            } elseif ($request->status === 'expiring_soon') {
+
+                $query->whereNotNull('expiry_date')
+                    ->whereDate(
+                        'expiry_date',
+                        '>=',
+                        today()
+                    )
+                    ->whereDate(
+                        'expiry_date',
+                        '<=',
+                        today()->addDays(30)
+                    );
+
+            } elseif ($request->status === 'available') {
+
+                $query->where(function ($q) {
+
+                    $q->whereNull('expiry_date')
+                        ->orWhereDate(
+                            'expiry_date',
+                            '>=',
+                            today()
+                        );
+                });
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Pagination
+        |--------------------------------------------------------------------------
+        */
+        $inventories = $query
+            ->orderByDesc('id')
+            ->paginate(15)
+            ->withQueryString();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Available Warehouses
+        |--------------------------------------------------------------------------
+        */
+        $warehouses = $this->getAvailableWarehouses();
 
         return view(
             'admin.inventories.index',
-            compact('inventories')
+            compact(
+                'inventories',
+                'warehouses'
+            )
         );
     }
 
     /**
-     * Show the form for creating a new inventory entry.
+     * Show create form.
      */
-    public function create()
+    public function create(): View
     {
-        $user = Auth::user();
+        $warehouses = $this->getAvailableWarehouses();
 
-        // Warehouse Manager ဖြစ်ပါက ၎င်းနှင့် သက်ဆိုင်သော Warehouse များကိုသာ Dropdown တွင် ပြမည်။
-        if ($user->role === 'warehouse_manager') {
-            $warehouses = $user->warehouses()
-                ->where('status', 'Active')
-                ->orderBy('name')
-                ->get();
-        } else {
-            // Admin ဖြစ်ပါက Active ဖြစ်သော Warehouse အားလုံးကို ပြမည်။
-            $warehouses = Warehouse::where('status', 'Active')
-                ->orderBy('name')
-                ->get();
-        }
-
-        $items = Item::where('status', 'Active')
+        $items = Item::where(
+                'status',
+                'Active'
+            )
             ->orderBy('name')
             ->get();
 
         return view(
             'admin.inventories.create',
-            compact('warehouses', 'items')
+            compact(
+                'warehouses',
+                'items'
+            )
         );
     }
 
     /**
-     * Store a newly created or updated inventory in storage.
+     * Store inventory.
      */
-    public function store(InventoryRequest $request)
-    {
+    public function store(
+        InventoryRequest $request
+    ): RedirectResponse {
+
+        /** @var \App\Models\User $user */
         $user = Auth::user();
+
         $data = $request->validated();
 
-        // Warehouse Manager ဖြစ်ပါက Form မှ warehouse_id မပါခဲ့လျှင် မိမိ၏ ပထမဆုံး Warehouse ID ကို အလိုအလျောက် Assign လုပ်မည်။
-        if ($user->role === 'warehouse_manager') {
-            $warehouseId = $request->warehouse_id ?? $user->warehouses()->first()?->id;
-        } else {
-            $warehouseId = $request->warehouse_id;
+        /*
+        |--------------------------------------------------------------------------
+        | Warehouse Manager / Manager
+        |--------------------------------------------------------------------------
+        | Force assigned warehouse.
+        |--------------------------------------------------------------------------
+        */
+        if (
+            in_array(
+                $user->role,
+                ['warehouse_manager', 'manager']
+            )
+        ) {
+
+            if (!$user->warehouse_id) {
+
+                return back()
+                    ->withInput()
+                    ->with(
+                        'error',
+                        'သင့်ထံတွင် Assign လုပ်ထားသော Warehouse မရှိပါ။'
+                    );
+            }
+
+            $data['warehouse_id'] =
+                $user->warehouse_id;
         }
 
-        // updateOrCreate ဖြင့် Duplicate Entry မဖြစ်အောင် ထိန်းသိမ်းမည်။
-        Inventory::updateOrCreate(
-            [
-                'warehouse_id' => $warehouseId,
-                'item_id'      => $data['item_id'],
-            ],
-            [
-                'quantity'     => $data['quantity'],
-            ]
-        );
+        /*
+        |--------------------------------------------------------------------------
+        | Check existing inventory
+        |--------------------------------------------------------------------------
+        */
+        $existing = Inventory::where(
+                'warehouse_id',
+                $data['warehouse_id']
+            )
+            ->where(
+                'item_id',
+                $data['item_id']
+            )
+            ->first();
+
+        if ($existing) {
+
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'ဤ Warehouse တွင် ဤပစ္စည်း ရှိပြီးသားဖြစ်ပါသည်။ Update လုပ်ပါ။'
+                );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Inventory
+        |--------------------------------------------------------------------------
+        */
+        Inventory::create([
+            'warehouse_id' => $data['warehouse_id'],
+            'item_id'      => $data['item_id'],
+            'quantity'     => $data['quantity'],
+            'expiry_date'  => $data['expiry_date'] ?? null,
+        ]);
 
         return redirect()
-            ->route('backend.inventories.index')
-            ->with('success', 'Inventory saved successfully.');
+            ->route(
+                'backend.inventories.index'
+            )
+            ->with(
+                'success',
+                'Inventory ကို အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ။'
+            );
     }
 
     /**
-     * Display the specified inventory item.
+     * Show inventory details.
      */
-    public function show(Inventory $inventory)
-    {
-        // Policy ဖြင့် အခြား Warehouse ၏ Data ကို Direct URL မှ ကြည့်ရှုခြင်းအား တားဆီးမည်။
-        $this->authorize('view', $inventory);
+    public function show(
+        Inventory $inventory
+    ): View {
+
+        $this->checkWarehouseAccess($inventory);
 
         $inventory->load([
             'warehouse',
-            'item.category'
+            'item.category',
         ]);
 
         return view(
@@ -112,63 +326,195 @@ class InventoryController extends Controller
     }
 
     /**
-     * Show the form for editing the specified inventory entry.
+     * Show edit form.
      */
-    public function edit(Inventory $inventory)
-    {
-        // Policy ဖြင့် စစ်ဆေးမည်
-        $this->authorize('update', $inventory);
+    public function edit(
+        Inventory $inventory
+    ): View {
 
-        $user = Auth::user();
+        $this->checkWarehouseAccess($inventory);
 
-        if ($user->role === 'warehouse_manager') {
-            $warehouses = $user->warehouses()
-                ->where('status', 'Active')
-                ->orderBy('name')
-                ->get();
-        } else {
-            $warehouses = Warehouse::where('status', 'Active')
-                ->orderBy('name')
-                ->get();
-        }
+        $warehouses =
+            $this->getAvailableWarehouses();
 
-        $items = Item::where('status', 'Active')
+        $items = Item::where(
+                'status',
+                'Active'
+            )
             ->orderBy('name')
             ->get();
 
         return view(
             'admin.inventories.edit',
-            compact('inventory', 'warehouses', 'items')
+            compact(
+                'inventory',
+                'warehouses',
+                'items'
+            )
         );
     }
 
     /**
-     * Update the specified inventory in storage.
+     * Update inventory.
      */
-    public function update(InventoryRequest $request, Inventory $inventory)
-    {
-        // Policy Check
-        $this->authorize('update', $inventory);
+    public function update(
+        InventoryRequest $request,
+        Inventory $inventory
+    ): RedirectResponse {
 
-        $inventory->update($request->validated());
+        $this->checkWarehouseAccess($inventory);
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        $data = $request->validated();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Manager cannot change warehouse.
+        |--------------------------------------------------------------------------
+        */
+        if (
+            in_array(
+                $user->role,
+                ['warehouse_manager', 'manager']
+            )
+        ) {
+
+            $data['warehouse_id'] =
+                $inventory->warehouse_id;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update
+        |--------------------------------------------------------------------------
+        */
+        $inventory->update([
+            'warehouse_id' =>
+                $data['warehouse_id'],
+
+            'item_id' =>
+                $data['item_id'],
+
+            'quantity' =>
+                $data['quantity'],
+
+            'expiry_date' =>
+                $data['expiry_date'] ?? null,
+        ]);
 
         return redirect()
-            ->route('backend.inventories.index')
-            ->with('success', 'Inventory updated successfully.');
+            ->route(
+                'backend.inventories.index'
+            )
+            ->with(
+                'success',
+                'Inventory ကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ။'
+            );
     }
 
     /**
-     * Remove the specified inventory entry from storage.
+     * Delete inventory.
      */
-    public function destroy(Inventory $inventory)
-    {
-        // Policy Check
-        $this->authorize('delete', $inventory);
+    public function destroy(
+        Inventory $inventory
+    ): RedirectResponse {
+
+        $this->checkWarehouseAccess($inventory);
 
         $inventory->delete();
 
         return redirect()
-            ->route('backend.inventories.index')
-            ->with('success', 'Inventory deleted successfully.');
+            ->route(
+                'backend.inventories.index'
+            )
+            ->with(
+                'success',
+                'Inventory ကို အောင်မြင်စွာ ဖျက်ပြီးပါပြီ။'
+            );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helper: Available Warehouses
+    |--------------------------------------------------------------------------
+    */
+    private function getAvailableWarehouses()
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Warehouse Manager / Manager
+        |--------------------------------------------------------------------------
+        */
+        if (
+            $user &&
+            in_array(
+                $user->role,
+                ['warehouse_manager', 'manager']
+            )
+        ) {
+
+            return Warehouse::where(
+                    'id',
+                    $user->warehouse_id
+                )
+                ->where(
+                    'status',
+                    'Active'
+                )
+                ->orderBy('name')
+                ->get();
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Admin
+        |--------------------------------------------------------------------------
+        */
+        return Warehouse::where(
+                'status',
+                'Active'
+            )
+            ->orderBy('name')
+            ->get();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helper: Warehouse Access
+    |--------------------------------------------------------------------------
+    */
+    private function checkWarehouseAccess(
+        Inventory $inventory
+    ): void {
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (
+            $user &&
+            in_array(
+                $user->role,
+                ['warehouse_manager', 'manager']
+            )
+        ) {
+
+            if (
+                !$user->warehouse_id ||
+                (int) $inventory->warehouse_id
+                !==
+                (int) $user->warehouse_id
+            ) {
+
+                abort(
+                    403,
+                    'ဤ Inventory ကို အသုံးပြုခွင့်မရှိပါ။'
+                );
+            }
+        }
     }
 }

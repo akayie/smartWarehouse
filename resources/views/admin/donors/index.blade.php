@@ -110,9 +110,9 @@
                             Email
                         </th>
 
-                        <th>
+                        {{-- <th>
                             လိပ်စာ
-                        </th>
+                        </th> --}}
 
                         <th>
                             စုစုပေါင်း လှူဒါန်းမှု
@@ -165,12 +165,12 @@
                             </td>
 
 
-                            {{-- Address --}}
+                            {{-- Address
                             <td>
 
                                 {{ $donor->address ?? '-' }}
 
-                            </td>
+                            </td> --}}
 
 
                             {{-- Total Donations --}}
